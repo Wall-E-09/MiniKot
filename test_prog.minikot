@@ -1,0 +1,9 @@
+
+    var a: Int = 10;
+    var b: Double = 5.5;
+    
+    var res: Double = a + b;
+    
+    print("Result is:");
+    print(res);
+    

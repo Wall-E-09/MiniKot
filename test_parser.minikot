@@ -1,0 +1,7 @@
+const = MAX: Int = 100;
+var x: Double = 5.1;
+fun calc(a: Int): Int { return a ^ 2; }
+if (x <= 10.0) { println("OK"); x = 1 ^ 2 ^ 3; }
+
+
+x = calc(calc(65)) * 5;

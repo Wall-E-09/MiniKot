@@ -1,0 +1,579 @@
+classdef app1 < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                  matlab.ui.Figure
+        CRUDPanel                 matlab.ui.container.Panel
+        BtnClearAll               matlab.ui.control.Button
+        BtnDelete                 matlab.ui.control.Button
+        BtnUpdate                 matlab.ui.control.Button
+        BtnRead                   matlab.ui.control.Button
+        LogsPanel                 matlab.ui.container.Panel
+        clearButton               matlab.ui.control.Button
+        LogsTextArea              matlab.ui.control.TextArea
+        DataBaseParamsPanel       matlab.ui.container.Panel
+        GetFromButton             matlab.ui.control.Button
+        LoadToButton              matlab.ui.control.Button
+        PortEditField             matlab.ui.control.NumericEditField
+        PortEditFieldLabel        matlab.ui.control.Label
+        CollectionEditField       matlab.ui.control.EditField
+        CollectionEditFieldLabel  matlab.ui.control.Label
+        NameEditField             matlab.ui.control.EditField
+        NameEditFieldLabel        matlab.ui.control.Label
+        SaveToFileButton          matlab.ui.control.Button
+        LaunchProgramButton       matlab.ui.control.Button
+        UITable                   matlab.ui.control.Table
+        PathEditField             matlab.ui.control.EditField
+        FileLabel                 matlab.ui.control.Label
+        ImportButton              matlab.ui.control.Button
+    end
+    
+    properties (Access = private)
+        Fullpath 
+        MongoCollection
+        MongoClient
+        MongoIsConnected
+        PyJson
+        pVal 
+        nVal 
+        cVal 
+    end
+    
+    methods (Access = private)
+        
+        function addLogMsg(app, msg)
+            txtVal = string(msg);
+            if numel(txtVal) == 0, txtVal = ""; end
+            if numel(txtVal) > 1, txtVal = join(txtVal, " "); end
+            lines = split(txtVal, ["\n", newline]);
+            if isempty(app.LogsTextArea.Value)
+                app.LogsTextArea.Value = lines;
+            else
+                app.LogsTextArea.Value = [app.LogsTextArea.Value; lines];
+            end
+        end
+        
+        function dbConnect(app, port, name, coll)
+            try
+                app.PyJson = py.importlib.import_module('json');
+                pymongo = py.importlib.import_module('pymongo');
+                
+                if isnumeric(port)
+                    portStr = sprintf('%.0f', port); 
+                else
+                    portStr = string(port).strip(); 
+                end
+                
+                connStr = sprintf('mongodb://localhost:%s/?serverSelectionTimeoutMS=2000', portStr);
+                client = pymongo.MongoClient(connStr);
+                app.MongoClient = client;
+                
+                % Check connection
+                try
+                    pingCommand = py.dict(pyargs('ping', 1));
+                    app.MongoClient.admin.command(pingCommand);
+                    app.MongoIsConnected = true;
+                catch
+                    app.MongoIsConnected = false;
+                    app.addLogMsg('Error: MongoDB not running or wrong port.');
+                    return;
+                end
+                
+                db = client.get_database(name); 
+                app.MongoCollection = db.get_collection(coll); 
+                
+                app.pVal = port;
+                app.nVal = name;
+                app.cVal = coll;
+                 
+                % app.addLogMsg("DB: Connection verified.");
+            catch ME
+                app.MongoIsConnected = false;
+                app.MongoClient = [];
+                app.addLogMsg(['Error: ' ME.message]);
+            end
+        end
+    end
+    
+    % Callbacks
+    methods (Access = private)
+        
+        % Import
+        function ImportButtonPushed(app, event)
+            try 
+                [filename,path] = uigetfile({'*.m'}); 
+                if ~(isequal(filename, 0)) && ~(isequal(path, 0)) 
+                    app.Fullpath = [path,filename];
+                    app.PathEditField.Value = [path,filename];
+                    figure(app.UIFigure);
+                    app.addLogMsg(['Imported: ', filename]);
+                    app.LaunchProgramButton.Enable = 'on';
+                    app.SaveToFileButton.Enable = 'on';
+                end
+            catch exception
+                disp(['Error: ', exception.message])
+            end
+        end
+
+        function PathEditFieldValueChanged(app, event)
+            value = app.PathEditField.Value;
+        end
+
+        % Launch Program
+        function LaunchProgramButtonPushed(app, event)
+           if ~(isempty(app.PathEditField.Value))
+                tmp = [tempname '.mat'];
+                evalin('base', sprintf("run('%s')", app.Fullpath)); 
+                evalin('base', sprintf("save('%s')", tmp));
+                vars = load(tmp);
+                delete(tmp);
+                names = fieldnames(vars);
+                values = struct2cell(vars);
+                
+                % Convert types for table
+                for k = 1:numel(values)
+                    if isstring(values{k})
+                        values{k} = char(values{k});
+                    elseif isstruct(values{k}) || isobject(values{k}) || iscell(values{k})
+                        values{k} = char(string(class(values{k})));
+                    end
+                end
+                app.UITable.ColumnName = {'Variable', 'Value'}; % Reset headers for calc mode
+                app.UITable.Data = [names values];
+           end
+        end
+
+        function PathEditFieldValueChanging(app, event)
+            changingValue = event.Value;
+            if isempty(changingValue)
+                app.LaunchProgramButton.Enable = 'off';
+                app.SaveToFileButton.Enable = 'off';
+            else
+                app.LaunchProgramButton.Enable = 'on';
+                app.SaveToFileButton.Enable = 'on';
+            end
+        end
+
+        function clearButtonPushed(app, event)
+            app.LogsTextArea.Value = '';
+        end
+
+        % --- [CREATE] LOAD TO BUTTON ---
+        function LoadToButtonPushed(app, event)
+            % 1. Read params
+            app.pVal = app.PortEditField.Value;
+            app.nVal = app.NameEditField.Value;
+            app.cVal = app.CollectionEditField.Value;
+            
+            if isempty(app.pVal) || isempty(app.nVal) || isempty(app.cVal)
+                app.addLogMsg('Error: DB params empty!');
+                return;
+            end
+            
+            % 2. Check if we are in DB View mode (to avoid saving DB list as data)
+            currentHeaders = app.UITable.ColumnName;
+            if length(currentHeaders) >= 2 && strcmp(currentHeaders{2}, 'MongoDB ID (System)')
+                 app.addLogMsg('Error: You are trying to save the DB List. Run a script first!');
+                 uialert(app.UIFigure, 'Please run "Launch Program" before saving.', 'Error');
+                 return;
+            end
+
+            app.dbConnect(app.pVal, app.nVal, app.cVal);
+            if ~app.MongoIsConnected, return; end
+            
+            tableData = app.UITable.Data;
+            if isempty(tableData)
+                app.addLogMsg('Table empty. Nothing to save.');
+                return;
+            end
+            
+            try
+                docStruct = struct();
+                docStruct.upload_date = char(datetime('now'));
+                
+                rows = size(tableData, 1);
+                for i = 1:rows
+                    key = char(tableData{i, 1}); 
+                    val = tableData{i, 2};       
+                    
+                    % Skip system keys if any present
+                    if strcmp(key, '_id') || strcmp(key, 'upload_date')
+                        continue;
+                    end
+
+                    validKey = matlab.lang.makeValidName(key);
+                    docStruct.(validKey) = val;
+                end
+                
+                % Add Experiment Name if missing
+                if ~isfield(docStruct, 'Experiment_Name')
+                     docStruct.Experiment_Name = ['Exp_' char(string(posixtime(datetime('now'))))];
+                end
+                
+                pyDoc = py.dict(docStruct);
+                app.MongoCollection.insert_one(pyDoc);
+                
+                app.addLogMsg("Success: Data uploaded.");
+                
+                % Auto-refresh to show the new record
+                app.BtnReadButtonPushed(event);
+                
+            catch ME
+                app.addLogMsg(['Upload Error: ', ME.message]);
+            end
+        end
+
+        % --- GET FROM BUTTON (Legacy, calls Read) ---
+        function GetFromButtonPushed(app, event)
+            app.BtnReadButtonPushed(event);
+        end
+
+        % --- [READ] REFRESH TABLE ---
+        function BtnReadButtonPushed(app, event)
+            % 1. Read params
+            app.pVal = app.PortEditField.Value;
+            app.nVal = app.NameEditField.Value;
+            app.cVal = app.CollectionEditField.Value;
+
+            app.dbConnect(app.pVal, app.nVal, app.cVal);
+            if ~app.MongoIsConnected, return; end
+            
+            try
+                cursor = app.MongoCollection.find();
+                pyList = py.list(cursor);
+                listLen = double(py.len(pyList));
+                
+                if listLen == 0
+                    app.addLogMsg('Database is empty.');
+                    app.UITable.Data = {};
+                    app.UITable.ColumnName = {'Experiment Name', 'MongoDB ID (System)'}; 
+                    return;
+                end
+                
+                newData = {};
+                
+                for i = 1:listLen
+                    doc = pyList{i}; 
+                    
+                    % Get Name
+                    name = doc.get('Experiment_Name');
+                    if isequal(name, py.None)
+                        name = doc.get('name');
+                        if isequal(name, py.None), name = 'Unnamed'; end
+                    end
+                    
+                    % Get ID (Safe conversion)
+                    idObj = doc.get('_id');
+                    strID = char(py.str(idObj)); 
+                    
+                    newData(end+1, :) = {char(name), strID}; %#ok<AGROW>
+                end
+                
+                app.addLogMsg('--> [READ] Table refreshed.');
+                app.UITable.ColumnName = {'Experiment Name', 'MongoDB ID (System)'};
+                app.UITable.Data = newData;
+                
+            catch ME
+                app.addLogMsg(['Read Error: ', ME.message]);
+            end
+        end
+
+        % --- [UPDATE] EDIT RECORD ---
+        function BtnUpdateButtonPushed(app, event)
+            app.pVal = app.PortEditField.Value;
+            app.nVal = app.NameEditField.Value;
+            app.cVal = app.CollectionEditField.Value;
+            
+            app.dbConnect(app.pVal, app.nVal, app.cVal);
+            if ~app.MongoIsConnected, return; end
+            
+            selection = app.UITable.Selection;
+            if isempty(selection)
+                uialert(app.UIFigure, 'Select a row to edit!', 'Warning');
+                return;
+            end
+            
+            rowIdx = selection(1);
+            currentName = app.UITable.Data{rowIdx, 1};
+            targetID = app.UITable.Data{rowIdx, 2}; 
+            
+            answer = inputdlg({'New Name:'}, 'Edit', [1 50], {currentName});
+            if isempty(answer), return; end 
+            newName = answer{1};
+            
+            try
+                bson = py.importlib.import_module('bson.objectid');
+                
+                % ID Handling
+                if bson.ObjectId.is_valid(targetID)
+                    finalID = bson.ObjectId(targetID);
+                else
+                    numID = str2double(targetID);
+                    if ~isnan(numID)
+                        finalID = py.int(int32(numID));
+                    else
+                        finalID = targetID;
+                    end
+                end
+                
+                filter = py.dict(pyargs('_id', finalID));
+                update = py.dict(pyargs('$set', py.dict(pyargs('Experiment_Name', newName))));
+                
+                app.MongoCollection.update_one(filter, update);
+                app.addLogMsg(['--> [UPDATE] Updated: ', newName]);
+                app.BtnReadButtonPushed(event);
+            catch ME
+                app.addLogMsg(['Update Error: ', ME.message]);
+            end
+        end
+
+        % --- [DELETE] REMOVE RECORD ---
+        function BtnDeleteButtonPushed(app, event)
+            app.pVal = app.PortEditField.Value;
+            app.nVal = app.NameEditField.Value;
+            app.cVal = app.CollectionEditField.Value;
+            
+            app.dbConnect(app.pVal, app.nVal, app.cVal);
+            if ~app.MongoIsConnected, return; end
+            
+            selection = app.UITable.Selection;
+            if isempty(selection)
+                uialert(app.UIFigure, 'Select a row to delete!', 'Warning');
+                return;
+            end
+            
+            rowIdx = selection(1);
+            targetName = app.UITable.Data{rowIdx, 1};
+            targetID = app.UITable.Data{rowIdx, 2};
+            
+            choice = uiconfirm(app.UIFigure, ['Delete "' targetName '"?'], 'Delete', 'Icon', 'warning');
+            
+            if strcmp(choice, 'OK')
+                try
+                    bson = py.importlib.import_module('bson.objectid');
+                    
+                    % Robust ID matching (ObjectId -> int -> string)
+                    deletedCount = 0;
+                    
+                    % 1. Try ObjectId
+                    if bson.ObjectId.is_valid(targetID)
+                        try
+                            q = py.dict(pyargs('_id', bson.ObjectId(targetID)));
+                            res = app.MongoCollection.delete_one(q);
+                            deletedCount = double(res.deleted_count);
+                        catch, end
+                    end
+                    
+                    % 2. Try Int
+                    if deletedCount == 0
+                        numID = str2double(targetID);
+                        if ~isnan(numID)
+                            try
+                                q = py.dict(pyargs('_id', py.int(int32(numID))));
+                                res = app.MongoCollection.delete_one(q);
+                                deletedCount = double(res.deleted_count);
+                            catch, end
+                        end
+                    end
+                    
+                    % 3. Try String
+                    if deletedCount == 0
+                        try
+                            q = py.dict(pyargs('_id', targetID));
+                            res = app.MongoCollection.delete_one(q);
+                            deletedCount = double(res.deleted_count);
+                        catch, end
+                    end
+                    
+                    if deletedCount > 0
+                        app.addLogMsg(['--> [DELETE] Deleted ID: ', targetID]);
+                        app.BtnReadButtonPushed(event);
+                    else
+                        app.addLogMsg(['--> [FAIL] ID not found in DB: ', targetID]);
+                    end
+                catch ME
+                    app.addLogMsg(['Delete Error: ', ME.message]);
+                end
+            end
+        end
+
+        % --- [CLEAR] DELETE ALL ---
+        function BtnClearAllButtonPushed(app, event)
+            app.pVal = app.PortEditField.Value;
+            app.nVal = app.NameEditField.Value;
+            app.cVal = app.CollectionEditField.Value;
+            
+            app.dbConnect(app.pVal, app.nVal, app.cVal);
+            if ~app.MongoIsConnected, return; end
+            
+            choice = uiconfirm(app.UIFigure, 'Delete ALL DATA?', 'Clear DB', 'Icon', 'error');
+            
+            if strcmp(choice, 'OK')
+                try
+                    app.MongoCollection.delete_many(py.dict()); 
+                    app.addLogMsg('--> [CLEAR] Database wiped.');
+                    app.BtnReadButtonPushed(event);
+                catch ME
+                    app.addLogMsg(['Clear Error: ', ME.message]);
+                end
+            end
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+        % Create UIFigure and components
+        function createComponents(app)
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 713 639];
+            app.UIFigure.Name = 'MATLAB DB Manager';
+            app.UIFigure.Resize = 'off';
+
+            app.ImportButton = uibutton(app.UIFigure, 'push');
+            app.ImportButton.ButtonPushedFcn = createCallbackFcn(app, @ImportButtonPushed, true);
+            app.ImportButton.FontWeight = 'bold';
+            app.ImportButton.Position = [275 598 59 27];
+            app.ImportButton.Text = 'Import';
+
+            app.FileLabel = uilabel(app.UIFigure);
+            app.FileLabel.HorizontalAlignment = 'right';
+            app.FileLabel.FontSize = 14;
+            app.FileLabel.FontWeight = 'bold';
+            app.FileLabel.Position = [19 600 35 22];
+            app.FileLabel.Text = 'Path';
+
+            app.PathEditField = uieditfield(app.UIFigure, 'text');
+            app.PathEditField.ValueChangedFcn = createCallbackFcn(app, @PathEditFieldValueChanged, true);
+            app.PathEditField.ValueChangingFcn = createCallbackFcn(app, @PathEditFieldValueChanging, true);
+            app.PathEditField.Position = [64 600 205 22];
+
+            app.UITable = uitable(app.UIFigure);
+            app.UITable.ColumnName = {'Variable'; 'Value'};
+            app.UITable.RowName = {};
+            app.UITable.Position = [66 126 268 442];
+            app.UITable.SelectionType = 'row';
+
+            app.LaunchProgramButton = uibutton(app.UIFigure, 'push');
+            app.LaunchProgramButton.ButtonPushedFcn = createCallbackFcn(app, @LaunchProgramButtonPushed, true);
+            app.LaunchProgramButton.FontSize = 14;
+            app.LaunchProgramButton.FontWeight = 'bold';
+            app.LaunchProgramButton.Enable = 'off';
+            app.LaunchProgramButton.Position = [381 71 236 35];
+            app.LaunchProgramButton.Text = 'Launch Program';
+
+            app.SaveToFileButton = uibutton(app.UIFigure, 'push');
+            app.SaveToFileButton.FontSize = 14;
+            app.SaveToFileButton.FontWeight = 'bold';
+            app.SaveToFileButton.Enable = 'off';
+            app.SaveToFileButton.Position = [67 71 97 34];
+            app.SaveToFileButton.Text = 'Save To File';
+
+            app.DataBaseParamsPanel = uipanel(app.UIFigure);
+            app.DataBaseParamsPanel.Title = 'Data Base Params';
+            app.DataBaseParamsPanel.FontWeight = 'bold';
+            app.DataBaseParamsPanel.FontSize = 14;
+            app.DataBaseParamsPanel.Position = [367 442 253 180];
+
+            app.NameEditFieldLabel = uilabel(app.DataBaseParamsPanel);
+            app.NameEditFieldLabel.HorizontalAlignment = 'right';
+            app.NameEditFieldLabel.FontSize = 14;
+            app.NameEditFieldLabel.FontWeight = 'bold';
+            app.NameEditFieldLabel.Position = [22 125 48 22];
+            app.NameEditFieldLabel.Text = 'Name:';
+
+            app.NameEditField = uieditfield(app.DataBaseParamsPanel, 'text');
+            app.NameEditField.Position = [106 125 108 22];
+            app.NameEditField.Value = 'KPImatlab';
+
+            app.CollectionEditFieldLabel = uilabel(app.DataBaseParamsPanel);
+            app.CollectionEditFieldLabel.HorizontalAlignment = 'right';
+            app.CollectionEditFieldLabel.FontSize = 14;
+            app.CollectionEditFieldLabel.FontWeight = 'bold';
+            app.CollectionEditFieldLabel.Position = [22 85 77 22];
+            app.CollectionEditFieldLabel.Text = 'Collection:';
+
+            app.CollectionEditField = uieditfield(app.DataBaseParamsPanel, 'text');
+            app.CollectionEditField.Position = [106 85 108 22];
+            app.CollectionEditField.Value = 'results';
+
+            app.PortEditFieldLabel = uilabel(app.DataBaseParamsPanel);
+            app.PortEditFieldLabel.HorizontalAlignment = 'right';
+            app.PortEditFieldLabel.FontSize = 14;
+            app.PortEditFieldLabel.FontWeight = 'bold';
+            app.PortEditFieldLabel.Position = [22 48 38 22];
+            app.PortEditFieldLabel.Text = 'Port:';
+
+            app.PortEditField = uieditfield(app.DataBaseParamsPanel, 'numeric');
+            app.PortEditField.Limits = [0 99999];
+            app.PortEditField.ValueDisplayFormat = '%.0f';
+            app.PortEditField.Position = [168 48 46 22];
+            app.PortEditField.Value = 27017;
+
+            app.LoadToButton = uibutton(app.DataBaseParamsPanel, 'push');
+            app.LoadToButton.ButtonPushedFcn = createCallbackFcn(app, @LoadToButtonPushed, true);
+            app.LoadToButton.FontWeight = 'bold';
+            app.LoadToButton.Position = [11 12 100 23];
+            app.LoadToButton.Text = 'Load To';
+
+            app.GetFromButton = uibutton(app.DataBaseParamsPanel, 'push');
+            app.GetFromButton.ButtonPushedFcn = createCallbackFcn(app, @GetFromButtonPushed, true);
+            app.GetFromButton.FontWeight = 'bold';
+            app.GetFromButton.Position = [141 12 100 23];
+            app.GetFromButton.Text = 'Get From (Old)';
+
+            app.LogsPanel = uipanel(app.UIFigure);
+            app.LogsPanel.Title = 'Logs';
+            app.LogsPanel.FontWeight = 'bold';
+            app.LogsPanel.FontSize = 14;
+            app.LogsPanel.Position = [365 126 253 144];
+
+            app.LogsTextArea = uitextarea(app.LogsPanel);
+            app.LogsTextArea.Editable = 'off';
+            app.LogsTextArea.Position = [6 1 242 109];
+
+            app.clearButton = uibutton(app.LogsPanel, 'push');
+            app.clearButton.ButtonPushedFcn = createCallbackFcn(app, @clearButtonPushed, true);
+            app.clearButton.FontWeight = 'bold';
+            app.clearButton.Position = [194 121 59 23];
+            app.clearButton.Text = 'clear';
+
+            app.CRUDPanel = uipanel(app.UIFigure);
+            app.CRUDPanel.Title = 'Database Control (CRUD)';
+            app.CRUDPanel.Position = [365 292 253 117];
+
+            app.BtnRead = uibutton(app.CRUDPanel, 'push');
+            app.BtnRead.ButtonPushedFcn = createCallbackFcn(app, @BtnReadButtonPushed, true);
+            app.BtnRead.Position = [14 61 100 23];
+            app.BtnRead.Text = 'Read DB';
+
+            app.BtnUpdate = uibutton(app.CRUDPanel, 'push');
+            app.BtnUpdate.ButtonPushedFcn = createCallbackFcn(app, @BtnUpdateButtonPushed, true);
+            app.BtnUpdate.Position = [144 61 100 23];
+            app.BtnUpdate.Text = 'Edit Name';
+
+            app.BtnDelete = uibutton(app.CRUDPanel, 'push');
+            app.BtnDelete.ButtonPushedFcn = createCallbackFcn(app, @BtnDeleteButtonPushed, true);
+            app.BtnDelete.Position = [14 16 100 23];
+            app.BtnDelete.Text = 'Delete Row';
+
+            app.BtnClearAll = uibutton(app.CRUDPanel, 'push');
+            app.BtnClearAll.ButtonPushedFcn = createCallbackFcn(app, @BtnClearAllButtonPushed, true);
+            app.BtnClearAll.Position = [145 16 100 23];
+            app.BtnClearAll.Text = 'Clear All';
+
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+        function app = app1
+            createComponents(app)
+            registerApp(app, app.UIFigure)
+            if nargout == 0, clear app, end
+        end
+        function delete(app)
+            delete(app.UIFigure)
+        end
+    end
+end

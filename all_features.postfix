@@ -1,0 +1,192 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   MAX_VAL int
+   PI float
+   isRunning bool
+   userName string
+   counter int
+   area float
+   testCalc float
+)
+
+.funcs(
+   powerCalc float 2
+)
+
+.labels(
+   m1 0
+   m4 0
+   m5 0
+   m3 0
+   m7 0
+   m8 0
+   m6 0
+   m9 0
+   m10 0
+   m11 0
+   m12 0
+   m2 0
+)
+
+.code(
+   MAX_VAL l-val
+   50 int
+   = assign_op
+   PI l-val
+   3.1415 float
+   = assign_op
+   isRunning l-val
+   TRUE bool
+   = assign_op
+   userName l-val
+   """" string
+   = assign_op
+   counter l-val
+   0 int
+   = assign_op
+   area l-val
+   0.0 float
+   = assign_op
+   testCalc l-val
+   0.0 float
+   = assign_op
+   ""Enter your name: "" string
+   OUT out_op
+   userName l-val
+   INP inp_op
+   = assign_op
+   ""Hello: "" string
+   OUT out_op
+   userName r-val
+   OUT out_op
+   ""Enter start counter (int): "" string
+   OUT out_op
+   counter l-val
+   INP inp_op
+   s2i conv
+   = assign_op
+   testCalc l-val
+   10.0 float
+   2.0 float
+   3.0 float
+   2 int
+   i2f conv
+   ^ pow_op
+   * math_op
+   + math_op
+   4.0 float
+   2.0 float
+   / math_op
+   - math_op
+   = assign_op
+   ""Complex calc result (10+2*9-2): "" string
+   OUT out_op
+   testCalc r-val
+   OUT out_op
+   m1 label
+   : colon
+   isRunning r-val
+   m2 label
+   JF jf
+   area l-val
+   PI r-val
+   counter r-val
+   2 int
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   i2f conv
+   ^ pow_op
+   * math_op
+   = assign_op
+   ""Current Counter: "" string
+   OUT out_op
+   counter r-val
+   OUT out_op
+   ""Calculated Area: "" string
+   OUT out_op
+   area r-val
+   OUT out_op
+   area r-val
+   100.0 float
+   >= rel_op
+   m3 label
+   JF jf
+   ""Area is Large"" string
+   OUT out_op
+   area r-val
+   314.15 float
+   == rel_op
+   m4 label
+   JF jf
+   ""Exact Match with 314.15"" string
+   OUT out_op
+   m5 label
+   JMP jump
+   m4 label
+   : colon
+   m5 label
+   : colon
+   m6 label
+   JMP jump
+   m3 label
+   : colon
+   ""Area is Small"" string
+   OUT out_op
+   area r-val
+   0.0 float
+   != rel_op
+   m7 label
+   JF jf
+   ""Area is not Zero"" string
+   OUT out_op
+   m8 label
+   JMP jump
+   m7 label
+   : colon
+   m8 label
+   : colon
+   m6 label
+   : colon
+   counter l-val
+   counter r-val
+   5 int
+   + math_op
+   = assign_op
+   counter r-val
+   MAX_VAL r-val
+   > rel_op
+   m9 label
+   JF jf
+   isRunning l-val
+   FALSE bool
+   = assign_op
+   m10 label
+   JMP jump
+   m9 label
+   : colon
+   m10 label
+   : colon
+   counter r-val
+   0 int
+   <= rel_op
+   m11 label
+   JF jf
+   isRunning l-val
+   FALSE bool
+   = assign_op
+   m12 label
+   JMP jump
+   m11 label
+   : colon
+   m12 label
+   : colon
+   m1 label
+   JMP jump
+   m2 label
+   : colon
+   ""Loop finished"" string
+   OUT out_op
+)

@@ -1,0 +1,57 @@
+const MAX_VAL: Int = 50;
+val PI: Double = 3.1415;
+var isRunning: Boolean = true;
+var userName: String = "";
+var counter: Int = 0;
+var area: Double = 0.0;
+var testCalc: Double = 0.0;
+
+fun powerCalc(base: Double, exp: Int): Double {
+    var res: Double = base ^ exp;
+    return res;
+}
+
+print("Enter your name: ");
+userName = readString();
+print("Hello: ");
+println(userName);
+
+print("Enter start counter (int): ");
+counter = readInt();
+
+testCalc = 10.0 + 2.0 * 3.0 ^ 2 - 4.0 / 2.0;
+print("Complex calc result (10+2*9-2): ");
+println(testCalc);
+
+while (isRunning) {
+    area = PI * (counter ^ 2);
+    
+    print("Current Counter: ");
+    println(counter);
+    print("Calculated Area: ");
+    println(area);
+
+    if (area >= 100.0) {
+        println("Area is Large");
+        if (area == 314.15) {
+            println("Exact Match with 314.15");
+        }
+    } else {
+        println("Area is Small");
+        if (area != 0.0) {
+            println("Area is not Zero");
+        }
+    }
+
+    counter = counter + 5;
+
+    if (counter > MAX_VAL) {
+        isRunning = false;
+    }
+    
+    if (counter <= 0) {
+        isRunning = false;
+    }
+}
+
+print("Loop finished");

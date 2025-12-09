@@ -1,0 +1,15 @@
+var i: Int = 10;
+var d: Double = 5.5;
+var s: String = "Hello";
+
+fun sum(a: Int, b: Int): Int {
+    return a + b;
+}
+
+if (i > d) {
+   print(" true");
+}
+
+
+var res2: Int = sum(10, 20, 1);
+

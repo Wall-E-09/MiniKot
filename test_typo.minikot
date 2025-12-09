@@ -1,0 +1,3 @@
+funn myFunc() { 
+    return 0; // return з помилкою
+}

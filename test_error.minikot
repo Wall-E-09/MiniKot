@@ -1,0 +1,3 @@
+var price: Double = 100.0;
+var email: String = "user@test";
+val total = price # 5; // Символ '#' не входить до алфавіту

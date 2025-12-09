@@ -1,0 +1,52 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   i int
+   d float
+   s string
+   res2 int
+)
+
+.funcs(
+   sum int 2
+)
+
+.labels(
+   m1 0
+   m2 0
+)
+
+.code(
+   i l-val
+   10 int
+   = assign_op
+   d l-val
+   5.5 float
+   = assign_op
+   s l-val
+   ""Hello"" string
+   = assign_op
+   i r-val
+   d r-val
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   > rel_op
+   m1 label
+   JF jf
+   "" true"" string
+   OUT out_op
+   m2 label
+   JMP jump
+   m1 label
+   : colon
+   m2 label
+   : colon
+   res2 l-val
+   10 int
+   20 int
+   1 int
+   sum CALL
+   = assign_op
+)

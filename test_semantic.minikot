@@ -1,0 +1,30 @@
+var counter: Int = 0;
+val PI: Double = 3.14;
+var radius: Double = 0.0;
+var area: Double = 0.0;
+var y: Int = 0;
+
+print("Enter radius: ");
+radius = readDouble();
+
+area = PI * (radius ^ 2);
+
+if (area > 100.0) {
+   print("Big Area");
+   print(area);
+} else {
+   print("Small Area");
+}
+
+while (counter < 3) {
+   print(counter);
+   counter = counter + 1;
+}
+
+fun sum (a:Int , b:Int): Int {
+   return a + b;
+}
+
+y = sum (2 , 3);
+
+print(y);

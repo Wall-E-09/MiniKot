@@ -1,0 +1,13 @@
+var i: Int = 10;
+
+var d: Double = 5.5;
+
+var result: Double = 2 ^ 2 ^ 3; 
+
+var val1: Double = 100; 
+
+var calc: Double = i + d; 
+
+print(result);
+print(val1);
+print(calc);

@@ -1,0 +1,14 @@
+var a: Int = 10;
+var b: Int = 20;
+var c: Int = 20;
+var res: Int = 0;
+
+fun sum(x: Int, y: Int): Int {
+    return x + y;
+}
+
+
+
+print("Start");
+res = sum(a, b);
+print(res);

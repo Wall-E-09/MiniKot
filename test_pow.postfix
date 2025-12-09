@@ -1,0 +1,63 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   d float
+)
+
+.funcs(
+)
+
+.labels(
+)
+
+.code(
+   d l-val
+   0.0 float
+   = assign_op
+   d l-val
+   2 int
+   3 int
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   i2f conv
+   ^ pow_op
+   = assign_op
+   d r-val
+   OUT out_op
+   d l-val
+   2 int
+   2 int
+   3 int
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   i2f conv
+   ^ pow_op
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   ^ pow_op
+   = assign_op
+   ""Result of 2^2^3 (Expected 256.0):"" string
+   OUT out_op
+   d r-val
+   OUT out_op
+   d l-val
+   2 int
+   2 int
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   i2f conv
+   ^ pow_op
+   3 int
+   i2f conv
+   ^ pow_op
+   = assign_op
+   ""Result of (2^2)^3 (Expected 64.0):"" string
+   OUT out_op
+   d r-val
+   OUT out_op
+)

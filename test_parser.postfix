@@ -1,0 +1,31 @@
+.target: Postfix Machine
+.version: 0.3
+
+.vars(
+   a int
+   b int
+   result int
+)
+
+.funcs(
+   addNumbers int 2
+)
+
+.labels(
+   addNumbers 0
+)
+
+.code(
+   addNumbers label
+   : colon
+   a r-val
+   b r-val
+   + math_op
+   RET RET
+   RET RET
+   result l-val
+   0 int
+   = assign_op
+   result r-val
+   OUT out_op
+)

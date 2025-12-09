@@ -1,0 +1,95 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   counter int
+   PI float
+   radius float
+   area float
+   y int
+)
+
+.funcs(
+   sum int 2
+)
+
+.labels(
+   m1 0
+   m2 0
+   m3 0
+   m4 0
+)
+
+.code(
+   counter l-val
+   0 int
+   = assign_op
+   PI l-val
+   3.14 float
+   = assign_op
+   radius l-val
+   0.0 float
+   = assign_op
+   area l-val
+   0.0 float
+   = assign_op
+   y l-val
+   0 int
+   = assign_op
+   ""Enter radius: "" string
+   OUT out_op
+   radius l-val
+   INP inp_op
+   s2f conv
+   = assign_op
+   area l-val
+   PI r-val
+   radius r-val
+   2 int
+   i2f conv
+   ^ pow_op
+   * math_op
+   = assign_op
+   area r-val
+   100.0 float
+   > rel_op
+   m1 label
+   JF jf
+   ""Big Area"" string
+   OUT out_op
+   area r-val
+   OUT out_op
+   m2 label
+   JMP jump
+   m1 label
+   : colon
+   ""Small Area"" string
+   OUT out_op
+   m2 label
+   : colon
+   m3 label
+   : colon
+   counter r-val
+   3 int
+   < rel_op
+   m4 label
+   JF jf
+   counter r-val
+   OUT out_op
+   counter l-val
+   counter r-val
+   1 int
+   + math_op
+   = assign_op
+   m3 label
+   JMP jump
+   m4 label
+   : colon
+   y l-val
+   2 int
+   3 int
+   sum CALL
+   = assign_op
+   y r-val
+   OUT out_op
+)

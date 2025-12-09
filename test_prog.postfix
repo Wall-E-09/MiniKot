@@ -1,0 +1,35 @@
+.target: Postfix Machine
+.version: 0.3
+
+.vars(
+   a int
+   b float
+   res float
+)
+
+.funcs(
+)
+
+.labels(
+)
+
+.code(
+   a l-val
+   10 int
+   = assign_op
+   b l-val
+   5.5 float
+   = assign_op
+   res l-val
+   a r-val
+   b r-val
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   + math_op
+   = assign_op
+   ""Result is:"" string
+   OUT out_op
+   res r-val
+   OUT out_op
+)

@@ -1,0 +1,11 @@
+.target: Postfix Machine
+.version: 0.3
+
+.vars(
+)
+
+.labels(
+)
+
+.code(
+)
