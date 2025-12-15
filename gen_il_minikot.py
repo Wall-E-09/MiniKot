@@ -10,8 +10,7 @@ ilCode = []
 var_table = {}       # {name: (type, index)}
 labelCounter = 0
 
-# Резервуємо індекс 0 під тимчасову змінну для SWAP-операцій
-# Всі змінні користувача будуть починатися з 1
+# Резервуємо індекс 0 під тимчасову змінну (для swap операцій)
 var_table['__temp'] = ('float64', 0)
 local_var_index = 1 
 
@@ -103,7 +102,6 @@ def parse_decl():
     
     expr_type = parse_expression()
     
-    # Конвертація при ініціалізації
     if cil_type == 'float64' and expr_type == 'int32':
         gen("    conv.r8")
     elif cil_type == 'int32' and expr_type == 'float64':
@@ -132,7 +130,6 @@ def parse_assign():
     if name in var_table:
         cil_type, idx = var_table[name]
         
-        # Конвертація при присвоєнні
         if cil_type == 'float64' and expr_type == 'int32':
             gen("    conv.r8")
         elif cil_type == 'int32' and expr_type == 'float64':
@@ -218,11 +215,10 @@ def parse_relation():
         parse_token(lex, 'rel_op')
         r_type = parse_sum()
         
-        # Порівняння: якщо int vs float, приводимо int до float
         if l_type == 'int32' and r_type == 'float64':
-             gen("    stloc 0") # Save float to __temp
-             gen("    conv.r8") # Convert int
-             gen("    ldloc 0") # Load float back
+             gen("    stloc 0") 
+             gen("    conv.r8") 
+             gen("    ldloc 0") 
         elif l_type == 'float64' and r_type == 'int32':
              gen("    conv.r8")
 
@@ -230,17 +226,11 @@ def parse_relation():
         elif lex == '<': gen("    clt")
         elif lex == '==': gen("    ceq")
         elif lex == '!=': 
-             gen("    ceq")
-             gen("    ldc.i4.0")
-             gen("    ceq")
-        elif lex == '>=': # Not clt
-             gen("    clt")
-             gen("    ldc.i4.0")
-             gen("    ceq")
-        elif lex == '<=': # Not cgt
-             gen("    cgt")
-             gen("    ldc.i4.0")
-             gen("    ceq")
+             gen("    ceq"); gen("    ldc.i4.0"); gen("    ceq")
+        elif lex == '>=': 
+             gen("    clt"); gen("    ldc.i4.0"); gen("    ceq")
+        elif lex == '<=': 
+             gen("    cgt"); gen("    ldc.i4.0"); gen("    ceq")
 
         return 'bool'
     return l_type
@@ -254,22 +244,34 @@ def parse_sum():
             parse_token(lex, 'add_op')
             r_type = parse_term()
             
+            # --- ВИПРАВЛЕНА КОНКАТЕНАЦІЯ ---
             if l_type == 'string' or r_type == 'string':
-                gen("    call string [mscorlib]System.String::Concat(string, string)")
+                # Якщо хоча б один операнд - рядок, перетворюємо інший на об'єкт (boxing)
+                
+                # 1. Перевіряємо лівий операнд (він глибше в стеку)
+                if l_type != 'string':
+                    gen("    stloc 0") # Ховаємо правий операнд
+                    if l_type == 'int32': gen("    box [mscorlib]System.Int32")
+                    elif l_type == 'float64': gen("    box [mscorlib]System.Double")
+                    elif l_type == 'bool': gen("    box [mscorlib]System.Boolean")
+                    gen("    ldloc 0") # Повертаємо правий операнд
+                
+                # 2. Перевіряємо правий операнд (він на верхівці стеку)
+                if r_type != 'string':
+                    if r_type == 'int32': gen("    box [mscorlib]System.Int32")
+                    elif r_type == 'float64': gen("    box [mscorlib]System.Double")
+                    elif r_type == 'bool': gen("    box [mscorlib]System.Boolean")
+                
+                # Викликаємо Concat, який приймає два об'єкти (автоматично викликає ToString)
+                gen("    call string [mscorlib]System.String::Concat(object, object)")
                 l_type = 'string'
             else:
-                # --- ВИПРАВЛЕНА АРИФМЕТИКА ЗМІШАНИХ ТИПІВ ---
+                # Математика
                 if l_type == 'int32' and r_type == 'float64':
-                    # Stack: [int, float]
-                    # Нам треба: [float, float]
-                    # Використовуємо __temp (index 0)
-                    gen("    stloc 0") # Зберегти float у temp. Stack: [int]
-                    gen("    conv.r8") # Конвертувати int. Stack: [float]
-                    gen("    ldloc 0") # Завантажити temp. Stack: [float, float]
+                    gen("    stloc 0"); gen("    conv.r8"); gen("    ldloc 0")
                     l_type = 'float64'
                 elif l_type == 'float64' and r_type == 'int32':
-                    # Stack: [float, int]
-                    gen("    conv.r8") # Просто конвертуємо верхній int
+                    gen("    conv.r8")
                     l_type = 'float64'
                 
                 if op == '+': gen("    add")
@@ -286,11 +288,8 @@ def parse_term():
             parse_token(lex, 'mult_op')
             r_type = parse_power()
             
-            # --- ВИПРАВЛЕНА АРИФМЕТИКА ЗМІШАНИХ ТИПІВ ---
             if l_type == 'int32' and r_type == 'float64':
-                gen("    stloc 0")
-                gen("    conv.r8")
-                gen("    ldloc 0")
+                gen("    stloc 0"); gen("    conv.r8"); gen("    ldloc 0")
                 l_type = 'float64'
             elif l_type == 'float64' and r_type == 'int32':
                 gen("    conv.r8")
@@ -306,18 +305,9 @@ def parse_power():
     _, lex, tok = get_symb()
     if tok == 'power_op':
         parse_token('^', 'power_op')
-        
-        # Конвертуємо основу, якщо int
-        if l_type == 'int32':
-            gen("    conv.r8")
-        
-        # Рекурсивно правий операнд
+        if l_type == 'int32': gen("    conv.r8")
         r_type = parse_power()
-        
-        # Конвертуємо показник, якщо int
-        if r_type == 'int32':
-            gen("    conv.r8")
-        
+        if r_type == 'int32': gen("    conv.r8")
         gen("    call float64 [mscorlib]System.Math::Pow(float64, float64)")
         return 'float64'
     return l_type
@@ -334,8 +324,7 @@ def parse_primary():
     elif tok == 'bool_literal':
         parse_token(lex, tok)
         val = 1 if lex == 'true' else 0
-        gen(f"    ldc.i4 {val}")
-        return 'bool'
+        gen(f"    ldc.i4 {val}"); return 'bool'
     elif tok == 'id':
         parse_token(lex, 'id')
         if lex in var_table:
@@ -348,7 +337,6 @@ def parse_primary():
     elif lex in ('readInt', 'readDouble', 'readString'): return parse_read_call()
     return 'void'
 
-# --- Збереження ---
 def save_il(filename):
     fname = filename + ".il"
     try:
@@ -365,7 +353,6 @@ def save_il(filename):
             
             if var_table:
                 f.write("    .locals init (\n")
-                # Сортуємо змінні за індексом
                 sorted_vars = sorted(var_table.items(), key=lambda item: item[1][1])
                 for i, (name, (typ, idx)) in enumerate(sorted_vars):
                     comma = "," if i < len(sorted_vars)-1 else ""
@@ -382,7 +369,6 @@ def save_il(filename):
     except Exception as e: print(f"Error saving file: {e}")
 
 if __name__ == "__main__":
-    import os
     print("Введіть назву файлу (без розширення .minikot):")
     file_base = input("> ").strip()
     if not file_base: file_base = "test_semantic"

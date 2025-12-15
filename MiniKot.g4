@@ -1,47 +1,36 @@
 grammar MiniKot;
 
-// --- Парсер (Синтаксис) ---
+// --- СИНТАКСИЧНІ ПРАВИЛА (PARSER) ---
 
 program: statement* EOF;
 
 statement
-    : varDecl       # VarDeclStmt
-    | assignment    # AssignStmt
-    | printStmt     # PrintStmt
-    | ifStmt        # IfStmt
-    | whileStmt     # WhileStmt
-    | block         # BlockStmt
+    : (VAR | VAL | CONST) ID ':' type '=' expression ';'  # StmtVarDecl
+    | ID '=' expression ';'                               # StmtAssign
+    | (PRINT | PRINTLN) '(' expression ')' ';'            # StmtPrint
+    | IF '(' expression ')' statement (ELSE statement)?   # StmtIf
+    | WHILE '(' expression ')' statement                  # StmtWhile
+    | '{' statement* '}'                                  # StmtBlock
     ;
 
-block: '{' statement* '}';
+type: 'Int' | 'Double' | 'String' | 'Boolean';
 
-varDecl: (VAR | VAL | CONST) ID ':' type '=' expression ';';
-
-assignment: ID '=' expression ';';
-
-printStmt: (PRINT | PRINTLN) '(' expression ')' ';';
-
-ifStmt: IF '(' expression ')' statement (ELSE statement)?;
-
-whileStmt: WHILE '(' expression ')' statement;
-
-// Вирази (з урахуванням пріоритетів)
+// Вирази
 expression
-    : left=expression op='^' right=expression          # PowExpr
-    | left=expression op=('*'|'/') right=expression    # MulDivExpr
-    | left=expression op=('+'|'-') right=expression    # AddSubExpr
-    | left=expression op=REL_OP right=expression       # RelationalExpr
-    | ID                                               # IdExpr
-    | LITERAL                                          # LiteralExpr
-    | readCall                                         # ReadExpr
-    | '(' expression ')'                               # ParenExpr
+    : <assoc=right> expression '^' expression             # PowExpr
+    | expression op=('*'|'/') expression                  # MulDivExpr
+    | expression op=('+'|'-') expression                  # AddSubExpr
+    | expression op=REL_OP expression                     # RelExpr
+    | ID                                                  # IdExpr
+    | LITERAL                                             # LitExpr
+    // --- ЗМІНА ТУТ: Ми вбудували readCall сюди ---
+    | (READ_INT | READ_DOUBLE | READ_STRING) '(' ')'      # ReadExpr
+    | '(' expression ')'                                  # ParenExpr
     ;
 
-readCall: (READ_INT | READ_DOUBLE | READ_STRING) '(' ')';
+// Правило readCall видалено, бо воно тепер всередині expression
 
-type: 'Int' | 'Double' | 'Boolean' | 'String';
-
-// --- Лексер (Токени) ---
+// --- ЛЕКСИЧНІ ПРАВИЛА (LEXER) ---
 
 VAR: 'var';
 VAL: 'val';
@@ -66,6 +55,5 @@ LITERAL
     | 'true' | 'false'   // Boolean
     ;
 
-// Пропуск пробілів та коментарів
 WS: [ \t\r\n]+ -> skip;
 COMMENT: '//' ~[\r\n]* -> skip;

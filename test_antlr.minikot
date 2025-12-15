@@ -1,0 +1,33 @@
+// Тест ANTLR Інтерпретатора
+
+print("Enter start number (Int): ");
+var i: Int = readInt();
+
+print("Enter step (Double): ");
+var step: Double = readDouble();
+
+var limit: Double = i + step * 5;
+
+println("Counting...");
+println("Limit is: " + limit);
+
+while (i < limit) {
+    print("Current: ");
+    println(i);
+    
+    // Перевірка if/else
+    if (i > limit / 2) {
+        println("  -> Passed half way!");
+    } else {
+        println("  -> Still go...");
+    }
+
+    i = i + step;
+}
+
+// Перевірка степеня
+var p: Double = 2 ^ 3 ^ 2; // Має бути 512 (правоасоціативність)
+print("Power check (2^3^2): ");
+println(p);
+
+println("Done!");

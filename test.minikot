@@ -1,0 +1,62 @@
+println("=== STARTING FINAL TEST ===");
+
+// --- ТЕСТ 1 & 2 & 3: МАТЕМАТИКА ---
+println("[1] Math Check:");
+
+var a: Int = 2;
+var b: Int = 3;
+var c: Int = 2;
+
+// Правоасоціативність: 2 ^ (3 ^ 2) = 2 ^ 9 = 512
+var powRes: Double = a ^ b ^ c; 
+print("   2^3^2 (Expect 512): ");
+println(powRes);
+
+// Змішані типи
+var mix: Double = 10 + 5.5;
+print("   10 + 5.5 (Expect 15.5): ");
+println(mix);
+
+// Пріоритети
+var prio: Int = 2 + 2 * 2;
+print("   2 + 2 * 2 (Expect 6): ");
+println(prio);
+
+
+// --- ТЕСТ 4 & 5: STRING BOXING & IO ---
+println("");
+println("[2] String & Boxing Check:");
+
+print("   Enter your name: ");
+var name: String = readString();
+
+print("   Enter your score (Int): ");
+var score: Int = readInt();
+
+// ТУТ БУЛА ПОМИЛКА РАНІШЕ (String + Int). Тепер має працювати.
+var result: String = "   User " + name + " has score: " + score;
+println(result);
+
+
+// --- ТЕСТ 6: IF/ELSE ---
+println("");
+println("[3] Logic Check:");
+
+if (score > 50) {
+    println("   Result: PASS (Score > 50)");
+} else {
+    println("   Result: FAIL (Score <= 50)");
+}
+
+
+// --- ТЕСТ 7: WHILE LOOP ---
+println("");
+println("[4] Loop Check:");
+var i: Int = 0;
+while (i < 3) {
+    print("   Iter: ");
+    println(i);
+    i = i + 1;
+}
+
+println("=== TEST COMPLETED ===");
