@@ -7,8 +7,7 @@ import os
 # ============================================
 num_row = 1
 
-# Структура для зберігання даних про scope (область видимості)
-# 'main' - це головна програма. Інші ключі - імена функцій.
+# Структура для зберігання даних про scope
 scopes = {
     'main': {
         'code': [],
@@ -18,9 +17,9 @@ scopes = {
     }
 }
 
-current_scope = 'main'  # Поточна область видимості ('main' або ім'я функції)
-global_vars = {}        # Список глобальних змінних (для .globVarList)
-func_signatures = {}    # name -> (ret_type, param_count)
+current_scope = 'main'
+global_vars = {}
+func_signatures = {}
 labelCounter = 0
 generate_on = True
 
@@ -45,7 +44,6 @@ def parse_token(expected_lex, expected_tok):
 
 def gen(lex, tok):
     if generate_on:
-        # Додаємо команду в код ПОТОЧНОГО scope
         scopes[current_scope]['code'].append((lex, tok))
 
 def createLabel():
@@ -54,7 +52,6 @@ def createLabel():
 
 def setLabel(label):
     gen(label, 'label'); gen(':', 'colon')
-    # Зберігаємо мітку в поточний scope
     scopes[current_scope]['labels'][label] = 0 
 
 # ============================================
@@ -95,7 +92,6 @@ def parse_block():
     parse_token('}', 'bracket_op')
 
 def parse_decl():
-    # var x: Int = 10;
     parse_token(None, 'keyword'); _, name, _ = get_symb(); parse_token(None, 'id')
     parse_token(':', 'punct'); _, type_mk, _ = get_symb(); parse_token(None, 'keyword') 
     parse_token('=', 'assign_op')
@@ -105,38 +101,38 @@ def parse_decl():
     elif type_mk == 'String': psm_type = 'string'
     elif type_mk == 'Boolean': psm_type = 'bool'
     
-    # Додаємо змінну в поточний scope
     scopes[current_scope]['vars'][name] = psm_type
-    
-    # Якщо ми в main, це глобальна змінна
-    if current_scope == 'main':
-        global_vars[name] = psm_type
+    if current_scope == 'main': global_vars[name] = psm_type
 
     gen(name, 'l-val')
     expr_type = parse_expression()
+    
     if psm_type == 'float' and expr_type == 'int': gen('i2f', 'conv')
+    elif psm_type == 'int' and expr_type == 'float': gen('f2i', 'conv')
+        
     gen('=', 'assign_op'); parse_token(';', 'punct')
 
 def parse_assign():
     _, name, _ = get_symb(); parse_token(None, 'id'); _, next_l, _ = get_symb()
     
-    # Виклик процедури (ігноруємо результат)
+    # === ВИКЛИК ПРОЦЕДУРИ ===
     if next_l == '(': 
          parse_token('(', 'bracket_op')
          _parse_call_args()
          parse_token(')', 'bracket_op'); parse_token(';', 'punct')
-         gen(name, 'CALL')
+         # Генеруємо CALL, щоб функція виконалася
+         gen(name, 'CALL') 
          return
 
     parse_token('=', 'assign_op'); gen(name, 'l-val'); expr_type = parse_expression()
     
-    # Шукаємо тип змінної (спочатку локально, потім глобально)
     var_type = scopes[current_scope]['vars'].get(name)
-    if not var_type and name in global_vars:
-        var_type = global_vars[name]
-    if not var_type: var_type = 'int' # Default
+    if not var_type and name in global_vars: var_type = global_vars[name]
+    if not var_type: var_type = 'int' 
 
     if var_type == 'float' and expr_type == 'int': gen('i2f', 'conv')
+    elif var_type == 'int' and expr_type == 'float': gen('f2i', 'conv')
+
     gen('=', 'assign_op'); parse_token(';', 'punct')
 
 def _parse_call_args():
@@ -156,16 +152,11 @@ def parse_fun_decl():
     parse_token(None, 'id')
     parse_token('(', 'bracket_op')
     
-    # 1. Створюємо новий scope для функції
     current_scope = func_name
     scopes[func_name] = {
-        'code': [],
-        'vars': {},   # Важливо: Python 3.7+ зберігає порядок вставки. PSM цього вимагає!
-        'labels': {},
-        'params_count': 0
+        'code': [], 'vars': {}, 'labels': {}, 'params_count': 0
     }
     
-    # 2. Парсимо параметри
     param_count = 0
     _, l, _ = get_symb()
     if l != ')':
@@ -179,10 +170,8 @@ def parse_fun_decl():
              elif p_type == 'Boolean': psm_type = 'bool'
              elif p_type == 'String': psm_type = 'string'
              
-             # Додаємо параметр у vars (вони мають бути ПЕРШИМИ у списку)
              scopes[func_name]['vars'][p_name] = psm_type
              param_count += 1
-             
              _, comma, _ = get_symb()
              if comma == ',': parse_token(',', 'punct')
              else: break
@@ -201,14 +190,11 @@ def parse_fun_decl():
     func_signatures[func_name] = (ret_type, param_count)
     scopes[func_name]['params_count'] = param_count
 
-    # 3. Парсимо тіло функції (код йде в scopes[func_name]['code'])
     parse_block()
     
-    # 4. Додаємо RET в кінці (якщо void або забули)
     if not scopes[func_name]['code'] or scopes[func_name]['code'][-1][0] != 'RET':
          gen('RET', 'RET')
 
-    # 5. Повертаємось в main scope
     current_scope = 'main'
 
 def parse_return():
@@ -287,26 +273,15 @@ def parse_power():
     _, lex, tok = get_symb()
     if tok == 'power_op':
         parse_token('^', 'power_op')
-        
-        # Рекурсивний виклик для правої частини
         r_type = parse_power() 
         
-        # --- АВТОМАТИЧНА КОНВЕРТАЦІЯ ТИПІВ ДЛЯ PSM ---
-        # PSM вимагає float для операції степеня.
-        # Стек зараз: [..., l_val, r_val] (r_val зверху)
-        
-        # 1. Якщо лівий операнд int -> конвертуємо
         if l_type == 'int':
-            gen('SWAP', 'stack_op') # [r, l]
-            gen('i2f', 'conv')      # [r, l_float]
-            gen('SWAP', 'stack_op') # [l_float, r]
-            
-        # 2. Якщо правий операнд int -> конвертуємо
+            gen('SWAP', 'stack_op'); gen('i2f', 'conv'); gen('SWAP', 'stack_op')
         if r_type == 'int':
-            gen('i2f', 'conv')      # [l_float, r_float]
+            gen('i2f', 'conv')
 
         gen('^', 'pow_op')
-        return 'float' # Результат завжди float
+        return 'float'
     return l_type
 
 def parse_primary():
@@ -318,11 +293,16 @@ def parse_primary():
     elif tok == 'id':
         parse_token(lex, 'id'); name = lex
         _, next_lex, _ = get_symb()
+        
+        # === ВИКЛИК ФУНКЦІЇ У ВИРАЗІ ===
         if next_lex == '(':
             parse_token('(', 'bracket_op')
             _parse_call_args()
             parse_token(')', 'bracket_op')
+            
+            # Генеруємо CALL, бо нам потрібен результат
             gen(name, 'CALL')
+                
             return func_signatures.get(name, ('int', 0))[0]
         else:
             gen(lex, 'r-val')
@@ -363,6 +343,9 @@ def write_scope_to_file(filename, scope_name):
 
 def save_postfix(base_filename):
     write_scope_to_file(base_filename + ".postfix", 'main')
+    
+    # === ВІДНОВЛЕНО: Генерація файлів функцій ===
+    # Це необхідно для коректної роботи CALL у PSM
     for name in scopes:
         if name != 'main':
             fname = f"{base_filename}${name}.postfix"
@@ -386,8 +369,6 @@ if __name__ == "__main__":
         parse_program()
         save_postfix(file_base)
         
-        # --- АВТОМАТИЧНИЙ ЗАПУСК PSM ---
         print("\n--- EXECUTION (PSM) ---")
-        # Використовуємо той самий python інтерпретатор для запуску
         command = f"{sys.executable} PSM.py -p . -m {file_base} --symbolic-labels"
         os.system(command)

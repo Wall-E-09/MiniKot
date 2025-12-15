@@ -9,7 +9,11 @@ num_row = 1
 ilCode = []          
 var_table = {}       # {name: (type, index)}
 labelCounter = 0
-local_var_index = 0
+
+# Резервуємо індекс 0 під тимчасову змінну для SWAP-операцій
+# Всі змінні користувача будуть починатися з 1
+var_table['__temp'] = ('float64', 0)
+local_var_index = 1 
 
 # ==========================================
 # ДОПОМІЖНІ ФУНКЦІЇ
@@ -99,11 +103,9 @@ def parse_decl():
     
     expr_type = parse_expression()
     
-    # --- ВИПРАВЛЕННЯ КОНВЕРТАЦІЇ ---
-    # Int -> Double
+    # Конвертація при ініціалізації
     if cil_type == 'float64' and expr_type == 'int32':
         gen("    conv.r8")
-    # Double -> Int (Наприклад, результат степеня записуємо в Int)
     elif cil_type == 'int32' and expr_type == 'float64':
         gen("    conv.i4")
         
@@ -130,7 +132,7 @@ def parse_assign():
     if name in var_table:
         cil_type, idx = var_table[name]
         
-        # --- ВИПРАВЛЕННЯ КОНВЕРТАЦІЇ ---
+        # Конвертація при присвоєнні
         if cil_type == 'float64' and expr_type == 'int32':
             gen("    conv.r8")
         elif cil_type == 'int32' and expr_type == 'float64':
@@ -149,8 +151,10 @@ def parse_print():
     
     method = "WriteLine" if is_line else "Write"
     
-    # CIL потребує точного типу
-    arg = expr_type if expr_type else "string"
+    if expr_type == 'int32': arg = 'int32'
+    elif expr_type == 'float64': arg = 'float64'
+    elif expr_type == 'bool': arg = 'bool'
+    else: arg = 'string'
     
     gen(f"    call void [mscorlib]System.Console::{method}({arg})")
     
@@ -214,12 +218,13 @@ def parse_relation():
         parse_token(lex, 'rel_op')
         r_type = parse_sum()
         
+        # Порівняння: якщо int vs float, приводимо int до float
         if l_type == 'int32' and r_type == 'float64':
-             # Спроба "на льоту" конвертувати (але в стеку int знизу)
-             # Без swap це складно. Для КП припускаємо, що типи сумісні або
-             # треба додавати local tmp variables для swap.
-             # Спрощене рішення:
-             pass 
+             gen("    stloc 0") # Save float to __temp
+             gen("    conv.r8") # Convert int
+             gen("    ldloc 0") # Load float back
+        elif l_type == 'float64' and r_type == 'int32':
+             gen("    conv.r8")
 
         if lex == '>': gen("    cgt")
         elif lex == '<': gen("    clt")
@@ -228,6 +233,15 @@ def parse_relation():
              gen("    ceq")
              gen("    ldc.i4.0")
              gen("    ceq")
+        elif lex == '>=': # Not clt
+             gen("    clt")
+             gen("    ldc.i4.0")
+             gen("    ceq")
+        elif lex == '<=': # Not cgt
+             gen("    cgt")
+             gen("    ldc.i4.0")
+             gen("    ceq")
+
         return 'bool'
     return l_type
 
@@ -244,9 +258,22 @@ def parse_sum():
                 gen("    call string [mscorlib]System.String::Concat(string, string)")
                 l_type = 'string'
             else:
+                # --- ВИПРАВЛЕНА АРИФМЕТИКА ЗМІШАНИХ ТИПІВ ---
+                if l_type == 'int32' and r_type == 'float64':
+                    # Stack: [int, float]
+                    # Нам треба: [float, float]
+                    # Використовуємо __temp (index 0)
+                    gen("    stloc 0") # Зберегти float у temp. Stack: [int]
+                    gen("    conv.r8") # Конвертувати int. Stack: [float]
+                    gen("    ldloc 0") # Завантажити temp. Stack: [float, float]
+                    l_type = 'float64'
+                elif l_type == 'float64' and r_type == 'int32':
+                    # Stack: [float, int]
+                    gen("    conv.r8") # Просто конвертуємо верхній int
+                    l_type = 'float64'
+                
                 if op == '+': gen("    add")
                 else: gen("    sub")
-                if l_type == 'float64' or r_type == 'float64': l_type = 'float64'
         else: break
     return l_type
 
@@ -259,38 +286,40 @@ def parse_term():
             parse_token(lex, 'mult_op')
             r_type = parse_power()
             
+            # --- ВИПРАВЛЕНА АРИФМЕТИКА ЗМІШАНИХ ТИПІВ ---
+            if l_type == 'int32' and r_type == 'float64':
+                gen("    stloc 0")
+                gen("    conv.r8")
+                gen("    ldloc 0")
+                l_type = 'float64'
+            elif l_type == 'float64' and r_type == 'int32':
+                gen("    conv.r8")
+                l_type = 'float64'
+
             if op == '*': gen("    mul")
             elif op == '/': gen("    div")
-            
-            if l_type == 'float64' or r_type == 'float64': l_type = 'float64'
         else: break
     return l_type
 
-# --- ВИПРАВЛЕНА ФУНКЦІЯ СТЕПЕНЯ (РЕКУРСИВНА, ПРАВОАСОЦІАТИВНА) ---
 def parse_power():
-    # 1. Читаємо лівий операнд
     l_type = parse_primary()
-    
     _, lex, tok = get_symb()
     if tok == 'power_op':
         parse_token('^', 'power_op')
         
-        # Конвертуємо лівий операнд у double, якщо це int
-        # Ми робимо це ЗАРАЗ, бо він вже на стеку
+        # Конвертуємо основу, якщо int
         if l_type == 'int32':
             gen("    conv.r8")
-            
-        # 2. РЕКУРСИВНО читаємо правий операнд (щоб було справа-наліво)
-        # 2 ^ 3 ^ 2 -> 2 ^ (3 ^ 2)
+        
+        # Рекурсивно правий операнд
         r_type = parse_power()
         
-        # Конвертуємо правий операнд (він тепер на верхівці стеку)
+        # Конвертуємо показник, якщо int
         if r_type == 'int32':
             gen("    conv.r8")
-            
+        
         gen("    call float64 [mscorlib]System.Math::Pow(float64, float64)")
         return 'float64'
-        
     return l_type
 
 def parse_primary():
@@ -336,6 +365,7 @@ def save_il(filename):
             
             if var_table:
                 f.write("    .locals init (\n")
+                # Сортуємо змінні за індексом
                 sorted_vars = sorted(var_table.items(), key=lambda item: item[1][1])
                 for i, (name, (typ, idx)) in enumerate(sorted_vars):
                     comma = "," if i < len(sorted_vars)-1 else ""
