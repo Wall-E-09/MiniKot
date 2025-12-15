@@ -7,6 +7,7 @@
    radius float
    area float
    y int
+   h float
 )
 
 .funcs(
@@ -35,6 +36,10 @@
    = assign_op
    y l-val
    0 int
+   = assign_op
+   h l-val
+   0 int
+   i2f conv
    = assign_op
    ""Enter radius: "" string
    OUT out_op
@@ -90,6 +95,22 @@
    3 int
    sum CALL
    = assign_op
+   h l-val
+   2 int
+   2 int
+   2 int
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   i2f conv
+   ^ pow_op
+   SWAP stack_op
+   i2f conv
+   SWAP stack_op
+   ^ pow_op
+   = assign_op
    y r-val
+   OUT out_op
+   h r-val
    OUT out_op
 )

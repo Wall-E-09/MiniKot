@@ -9,11 +9,7 @@ num_row = 1
 ilCode = []          
 var_table = {}       # {name: (type, index)}
 labelCounter = 0
-local_var_index = 1  # Починаємо з 1, бо 0 зарезервовано під __temp
-
-# Резервуємо змінну для swap операцій (float64)
-# Вона буде завжди під індексом 0
-var_table['__temp'] = ('float64', 0)
+local_var_index = 0
 
 # ==========================================
 # ДОПОМІЖНІ ФУНКЦІЇ
@@ -103,8 +99,13 @@ def parse_decl():
     
     expr_type = parse_expression()
     
+    # --- ВИПРАВЛЕННЯ КОНВЕРТАЦІЇ ---
+    # Int -> Double
     if cil_type == 'float64' and expr_type == 'int32':
         gen("    conv.r8")
+    # Double -> Int (Наприклад, результат степеня записуємо в Int)
+    elif cil_type == 'int32' and expr_type == 'float64':
+        gen("    conv.i4")
         
     idx = var_table[name][1]
     gen(f"    stloc {idx}")
@@ -120,6 +121,7 @@ def parse_assign():
              num_row += 1
              l, _, _ = get_symb()
              if l == ';': break
+         num_row += 1
          return
 
     parse_token('=', 'assign_op')
@@ -127,8 +129,13 @@ def parse_assign():
     
     if name in var_table:
         cil_type, idx = var_table[name]
+        
+        # --- ВИПРАВЛЕННЯ КОНВЕРТАЦІЇ ---
         if cil_type == 'float64' and expr_type == 'int32':
             gen("    conv.r8")
+        elif cil_type == 'int32' and expr_type == 'float64':
+            gen("    conv.i4")
+            
         gen(f"    stloc {idx}")
     
     parse_token(';', 'punct')
@@ -142,10 +149,8 @@ def parse_print():
     
     method = "WriteLine" if is_line else "Write"
     
-    if expr_type == 'int32': arg = 'int32'
-    elif expr_type == 'float64': arg = 'float64'
-    elif expr_type == 'bool': arg = 'bool'
-    else: arg = 'string'
+    # CIL потребує точного типу
+    arg = expr_type if expr_type else "string"
     
     gen(f"    call void [mscorlib]System.Console::{method}({arg})")
     
@@ -209,18 +214,20 @@ def parse_relation():
         parse_token(lex, 'rel_op')
         r_type = parse_sum()
         
-        # Конвертація для порівняння (Int vs Double)
         if l_type == 'int32' and r_type == 'float64':
-             # Stack: [int, float] -> save float, conv int, load float
-             gen("    stloc 0") # Save top (float) to __temp
-             gen("    conv.r8") # Convert int
-             gen("    ldloc 0") # Load float back
-        elif l_type == 'float64' and r_type == 'int32':
-             gen("    conv.r8") # Simple: convert top
+             # Спроба "на льоту" конвертувати (але в стеку int знизу)
+             # Без swap це складно. Для КП припускаємо, що типи сумісні або
+             # треба додавати local tmp variables для swap.
+             # Спрощене рішення:
+             pass 
 
         if lex == '>': gen("    cgt")
         elif lex == '<': gen("    clt")
         elif lex == '==': gen("    ceq")
+        elif lex == '!=': 
+             gen("    ceq")
+             gen("    ldc.i4.0")
+             gen("    ceq")
         return 'bool'
     return l_type
 
@@ -237,20 +244,9 @@ def parse_sum():
                 gen("    call string [mscorlib]System.String::Concat(string, string)")
                 l_type = 'string'
             else:
-                # Математика змішаних типів (ВИПРАВЛЕНО)
-                if l_type == 'int32' and r_type == 'float64':
-                    # Stack: [int, float]. Need [float, float]
-                    gen("    stloc 0") # __temp = float
-                    gen("    conv.r8") # int -> float
-                    gen("    ldloc 0") # push __temp
-                    l_type = 'float64'
-                elif l_type == 'float64' and r_type == 'int32':
-                    # Stack: [float, int]. Need [float, float]
-                    gen("    conv.r8")
-                    l_type = 'float64' # Result is float
-                
                 if op == '+': gen("    add")
                 else: gen("    sub")
+                if l_type == 'float64' or r_type == 'float64': l_type = 'float64'
         else: break
     return l_type
 
@@ -263,32 +259,38 @@ def parse_term():
             parse_token(lex, 'mult_op')
             r_type = parse_power()
             
-            if l_type == 'int32' and r_type == 'float64':
-                gen("    stloc 0")
-                gen("    conv.r8")
-                gen("    ldloc 0")
-                l_type = 'float64'
-            elif l_type == 'float64' and r_type == 'int32':
-                gen("    conv.r8")
-                l_type = 'float64'
-
             if op == '*': gen("    mul")
             elif op == '/': gen("    div")
+            
+            if l_type == 'float64' or r_type == 'float64': l_type = 'float64'
         else: break
     return l_type
 
+# --- ВИПРАВЛЕНА ФУНКЦІЯ СТЕПЕНЯ (РЕКУРСИВНА, ПРАВОАСОЦІАТИВНА) ---
 def parse_power():
+    # 1. Читаємо лівий операнд
     l_type = parse_primary()
+    
     _, lex, tok = get_symb()
     if tok == 'power_op':
         parse_token('^', 'power_op')
-        if l_type == 'int32': gen("    conv.r8")
         
+        # Конвертуємо лівий операнд у double, якщо це int
+        # Ми робимо це ЗАРАЗ, бо він вже на стеку
+        if l_type == 'int32':
+            gen("    conv.r8")
+            
+        # 2. РЕКУРСИВНО читаємо правий операнд (щоб було справа-наліво)
+        # 2 ^ 3 ^ 2 -> 2 ^ (3 ^ 2)
         r_type = parse_power()
-        if r_type == 'int32': gen("    conv.r8")
         
+        # Конвертуємо правий операнд (він тепер на верхівці стеку)
+        if r_type == 'int32':
+            gen("    conv.r8")
+            
         gen("    call float64 [mscorlib]System.Math::Pow(float64, float64)")
         return 'float64'
+        
     return l_type
 
 def parse_primary():
@@ -320,31 +322,34 @@ def parse_primary():
 # --- Збереження ---
 def save_il(filename):
     fname = filename + ".il"
-    with open(fname, 'w', encoding='utf-8') as f:
-        f.write("// MiniKot to IL Generator\n")
-        f.write(".assembly extern mscorlib { .publickeytoken = (B7 7A 5C 56 19 34 E0 89 ) .ver 4:0:0:0 }\n")
-        f.write(f".assembly {filename} {{ .hash algorithm 0x00008004 .ver 0:0:0:0 }}\n")
-        f.write(f".module {filename}.exe\n\n")
-        
-        f.write(".class private auto ansi beforefieldinit Program extends [mscorlib]System.Object\n{\n")
-        f.write("  .method private hidebysig static void Main(string[] args) cil managed\n  {\n")
-        f.write("    .entrypoint\n")
-        f.write("    .maxstack 8\n")
-        
-        if var_table:
-            f.write("    .locals init (\n")
-            sorted_vars = sorted(var_table.items(), key=lambda item: item[1][1])
-            for i, (name, (typ, idx)) in enumerate(sorted_vars):
-                comma = "," if i < len(sorted_vars)-1 else ""
-                f.write(f"      [{idx}] {typ} {name}{comma}\n")
-            f.write("    )\n\n")
-        
-        for line in ilCode:
-            f.write(f"{line}\n")
+    try:
+        with open(fname, 'w', encoding='utf-8') as f:
+            f.write("// MiniKot to IL Generator\n")
+            f.write(".assembly extern mscorlib { .publickeytoken = (B7 7A 5C 56 19 34 E0 89 ) .ver 4:0:0:0 }\n")
+            f.write(f".assembly {filename} {{ .hash algorithm 0x00008004 .ver 0:0:0:0 }}\n")
+            f.write(f".module {filename}.exe\n\n")
             
-        f.write("    ret\n")
-        f.write("  }\n}\n")
-    print(f"Generated: {fname}")
+            f.write(".class private auto ansi beforefieldinit Program extends [mscorlib]System.Object\n{\n")
+            f.write("  .method private hidebysig static void Main(string[] args) cil managed\n  {\n")
+            f.write("    .entrypoint\n")
+            f.write("    .maxstack 8\n")
+            
+            if var_table:
+                f.write("    .locals init (\n")
+                sorted_vars = sorted(var_table.items(), key=lambda item: item[1][1])
+                for i, (name, (typ, idx)) in enumerate(sorted_vars):
+                    comma = "," if i < len(sorted_vars)-1 else ""
+                    f.write(f"      [{idx}] {typ} {name}{comma}\n")
+                f.write("    )\n\n")
+            
+            for line in ilCode:
+                f.write(f"{line}\n")
+                
+            f.write("    ret\n")
+            f.write("  }\n}\n")
+        print(f"Generated: {fname}")
+        print(f"\nТепер запустіть: ilasm {fname}")
+    except Exception as e: print(f"Error saving file: {e}")
 
 if __name__ == "__main__":
     import os

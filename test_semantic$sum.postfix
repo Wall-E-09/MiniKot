@@ -12,6 +12,7 @@
    radius
    area
    y
+   h
 )
 
 .labels(

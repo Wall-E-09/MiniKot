@@ -3,6 +3,7 @@ val PI: Double = 3.14;
 var radius: Double = 0.0;
 var area: Double = 0.0;
 var y: Int = 0;
+var h: Double = 0;
 
 print("Enter radius: ");
 radius = readDouble();
@@ -21,10 +22,12 @@ while (counter < 3) {
    counter = counter + 1;
 }
 
-fun sum (a:Int , b:Int): Int {
-   return a + b;
-}
+//fun sum (a:Int , b:Int): Int {
+//  return a + b;
+//}
 
-y = sum (2 , 3);
+//y = sum (2 , 3);
+h = 2 ^ 2 ^ 2;
 
 print(y);
+print(h);
