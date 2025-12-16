@@ -1,0 +1,13 @@
+fun sum(a: Int, b: Int): Int {
+    var res: Int = a + b;
+    return res;
+}
+
+var x: Int = 10;
+var y: Int = 20;
+
+println("Calling function sum(10, 20)...");
+var result: Int = sum(x, y);
+
+println("Result: ");
+println(result);

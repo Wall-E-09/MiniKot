@@ -308,7 +308,7 @@ def parse_power():
     _, lex, tok = get_symb()
     if tok == 'power_op':
         parse_token('^', 'power_op')
-        right_type = parse_power() # Рекурсія забезпечує правоасоціативність (2 ^ (2 ^ 3))
+        right_type = parse_power() # Рекурсія (правоасоціативність)
         
         # Перевірка: степінь можна брати тільки від чисел
         is_num_l = left_type in ('Int', 'Double')
@@ -317,7 +317,12 @@ def parse_power():
         if not is_num_l or not is_num_r:
              fail_parse(f"Power operation requires numeric types, got {left_type} ^ {right_type}", num_row)
              
-        # ВАЖЛИВО: Результат степеня - завжди Double
+        # ЗМІНА ТУТ:
+        # Якщо обидва операнди Int -> результат Int
+        if left_type == 'Int' and right_type == 'Int':
+            return 'Int'
+            
+        # Якщо хоча б один Double -> результат Double
         return 'Double' 
     return left_type
 

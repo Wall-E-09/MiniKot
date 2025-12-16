@@ -1,55 +1,60 @@
-grammar MiniKot;
+grammar Minikot;
 
+// --- PARSER RULES ---
 
 program: statement* EOF;
 
 statement
-    : (VAR | VAL | CONST) ID ':' type '=' expression ';'  # StmtVarDecl
-    | ID '=' expression ';'                               # StmtAssign
-    | (PRINT | PRINTLN) '(' expression ')' ';'            # StmtPrint
-    | IF '(' expression ')' statement (ELSE statement)?   # StmtIf
-    | WHILE '(' expression ')' statement                  # StmtWhile
-    | '{' statement* '}'                                  # StmtBlock
+    : varDecl
+    | constDecl
+    | functionDecl          // <--- ДОДАЙТЕ ЦЕ (Оголошення функції)
+    | assignment
+    | printStmt
+    | ifStmt
+    | whileStmt
+    | block
+    | expressionStmt
     ;
 
-type: 'Int' | 'Double' | 'String' | 'Boolean';
+// Оголошення функції
+functionDecl
+    : FUN ID '(' paramList? ')' ':' type block  // <--- ПРАВИЛО ДЛЯ ФУНКЦІЇ
+    ;
 
+paramList
+    : param (COMMA param)* // <--- Використання коми
+    ;
+
+param
+    : ID ':' type
+    ;
+
+// Вирази (зверніть увагу на порядок!)
 expression
-    : <assoc=right> expression '^' expression             # PowExpr
-    | expression op=('*'|'/') expression                  # MulDivExpr
-    | expression op=('+'|'-') expression                  # AddSubExpr
-    | expression op=REL_OP expression                     # RelExpr
-    | ID                                                  # IdExpr
-    | LITERAL                                             # LitExpr
-    | (READ_INT | READ_DOUBLE | READ_STRING) '(' ')'      # ReadExpr
-    | '(' expression ')'                                  # ParenExpr
+    : LPAREN expression RPAREN      # ParenthesizedExpr
+    | MINUS expression              # UnaryMinusExpr    // <--- ПРАВИЛО ДЛЯ УНАРНОГО МІНУСА
+    | expression (MULT | DIV | POW) expression  # MultiplicativeExpr
+    | expression (PLUS | MINUS) expression      # AdditiveExpr
+    | expression relOp expression   # RelationalExpr
+    | ID LPAREN argList? RPAREN     # FunctionCallExpr  // <--- Виклик функції
+    | ID                            # IdentifierExpr
+    | LITERAL                       # LiteralExpr
+    | functionCall                  # ReadCallExpr
     ;
 
+argList
+    : expression (COMMA expression)* ; // <--- Використання коми у виклику
 
+// --- LEXER RULES ---
 
-VAR: 'var';
-VAL: 'val';
-CONST: 'const';
-IF: 'if';
-ELSE: 'else';
-WHILE: 'while';
-PRINT: 'print';
-PRINTLN: 'println';
-READ_INT: 'readInt';
-READ_DOUBLE: 'readDouble';
-READ_STRING: 'readString';
+FUN: 'fun';         // <--- Ключове слово fun
+RETURN: 'return';
+COMMA: ',';         // <--- ОБОВ'ЯЗКОВО ДОДАЙТЕ КОМУ
 
-REL_OP: '==' | '!=' | '<=' | '>=' | '<' | '>';
-
-LITERAL
-    : [0-9]+ '.' [0-9]+  // Double
-    | [0-9]+             // Int
-    | '"' .*? '"'        // String
-    | 'true' | 'false'   // Boolean
-    ;
-
-
-ID: [a-zA-Z_][a-zA-Z0-9_]*;
-
-WS: [ \t\r\n]+ -> skip;
-COMMENT: '//' ~[\r\n]* -> skip;
+// Інші токени (PLUS, MINUS, MULT, DIV, ID, INT, WS...)
+PLUS: '+';
+MINUS: '-';
+MULT: '*';
+DIV: '/';
+POW: '^';
+// ... ваші інші токени

@@ -94,23 +94,23 @@
    3 int
    sum CALL
    = assign_op
-   h l-val
-   2 int
-   2 int
-   2 int
-   SWAP stack_op
-   i2f conv
-   SWAP stack_op
-   i2f conv
-   ^ pow_op
-   SWAP stack_op
-   i2f conv
-   SWAP stack_op
-   ^ pow_op
-   f2i conv
-   = assign_op
    y r-val
    OUT out_op
+   h l-val
+   8 int
+   -1 int
+   * math_op
+   7 int
+   - math_op
+   4 int
+   -1 int
+   * math_op
+   4 int
+   - math_op
+   20 int
+   + math_op
+   - math_op
+   = assign_op
    h r-val
    OUT out_op
 )
