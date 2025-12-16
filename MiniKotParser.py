@@ -20,9 +20,9 @@ def serializedATN():
         0,8,11,1,0,25,27,1,0,13,14,1,0,15,16,102,0,11,1,0,0,0,2,58,1,0,0,
         0,4,60,1,0,0,0,6,72,1,0,0,0,8,10,3,2,1,0,9,8,1,0,0,0,10,13,1,0,0,
         0,11,9,1,0,0,0,11,12,1,0,0,0,12,14,1,0,0,0,13,11,1,0,0,0,14,15,5,
-        0,0,1,15,1,1,0,0,0,16,17,7,0,0,0,17,18,5,29,0,0,18,19,5,1,0,0,19,
+        0,0,1,15,1,1,0,0,0,16,17,7,0,0,0,17,18,5,30,0,0,18,19,5,1,0,0,19,
         20,3,4,2,0,20,21,5,2,0,0,21,22,3,6,3,0,22,23,5,3,0,0,23,59,1,0,0,
-        0,24,25,5,29,0,0,25,26,5,2,0,0,26,27,3,6,3,0,27,28,5,3,0,0,28,59,
+        0,24,25,5,30,0,0,25,26,5,2,0,0,26,27,3,6,3,0,27,28,5,3,0,0,28,59,
         1,0,0,0,29,30,7,1,0,0,30,31,5,4,0,0,31,32,3,6,3,0,32,33,5,5,0,0,
         33,34,5,3,0,0,34,59,1,0,0,0,35,36,5,20,0,0,36,37,5,4,0,0,37,38,3,
         6,3,0,38,39,5,5,0,0,39,42,3,2,1,0,40,41,5,21,0,0,41,43,3,2,1,0,42,
@@ -32,7 +32,7 @@ def serializedATN():
         54,55,1,0,0,0,55,57,1,0,0,0,56,54,1,0,0,0,57,59,5,7,0,0,58,16,1,
         0,0,0,58,24,1,0,0,0,58,29,1,0,0,0,58,35,1,0,0,0,58,44,1,0,0,0,58,
         50,1,0,0,0,59,3,1,0,0,0,60,61,7,2,0,0,61,5,1,0,0,0,62,63,6,3,-1,
-        0,63,73,5,29,0,0,64,73,5,30,0,0,65,66,7,3,0,0,66,67,5,4,0,0,67,73,
+        0,63,73,5,30,0,0,64,73,5,29,0,0,65,66,7,3,0,0,66,67,5,4,0,0,67,73,
         5,5,0,0,68,69,5,4,0,0,69,70,3,6,3,0,70,71,5,5,0,0,71,73,1,0,0,0,
         72,62,1,0,0,0,72,64,1,0,0,0,72,65,1,0,0,0,72,68,1,0,0,0,73,88,1,
         0,0,0,74,75,10,8,0,0,75,76,5,12,0,0,76,87,3,6,3,8,77,78,10,7,0,0,
@@ -65,7 +65,7 @@ class MiniKotParser ( Parser ):
                       "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "<INVALID>", "VAR", "VAL", "CONST", "IF", "ELSE", 
                       "WHILE", "PRINT", "PRINTLN", "READ_INT", "READ_DOUBLE", 
-                      "READ_STRING", "REL_OP", "ID", "LITERAL", "WS", "COMMENT" ]
+                      "READ_STRING", "REL_OP", "LITERAL", "ID", "WS", "COMMENT" ]
 
     RULE_program = 0
     RULE_statement = 1
@@ -103,8 +103,8 @@ class MiniKotParser ( Parser ):
     READ_DOUBLE=26
     READ_STRING=27
     REL_OP=28
-    ID=29
-    LITERAL=30
+    LITERAL=29
+    ID=30
     WS=31
     COMMENT=32
 
@@ -156,7 +156,7 @@ class MiniKotParser ( Parser ):
             self.state = 11
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while (((_la) & ~0x3f) == 0 and ((1 << _la) & 568197184) != 0):
+            while (((_la) & ~0x3f) == 0 and ((1 << _la) & 1105068096) != 0):
                 self.state = 8
                 self.statement()
                 self.state = 13
@@ -361,7 +361,7 @@ class MiniKotParser ( Parser ):
                 self.state = 22
                 self.match(MiniKotParser.T__2)
                 pass
-            elif token in [29]:
+            elif token in [30]:
                 localctx = MiniKotParser.StmtAssignContext(self, localctx)
                 self.enterOuterAlt(localctx, 2)
                 self.state = 24
@@ -438,7 +438,7 @@ class MiniKotParser ( Parser ):
                 self.state = 54
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                while (((_la) & ~0x3f) == 0 and ((1 << _la) & 568197184) != 0):
+                while (((_la) & ~0x3f) == 0 and ((1 << _la) & 1105068096) != 0):
                     self.state = 51
                     self.statement()
                     self.state = 56
@@ -687,7 +687,7 @@ class MiniKotParser ( Parser ):
             self.state = 72
             self._errHandler.sync(self)
             token = self._input.LA(1)
-            if token in [29]:
+            if token in [30]:
                 localctx = MiniKotParser.IdExprContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
@@ -695,7 +695,7 @@ class MiniKotParser ( Parser ):
                 self.state = 63
                 self.match(MiniKotParser.ID)
                 pass
-            elif token in [30]:
+            elif token in [29]:
                 localctx = MiniKotParser.LitExprContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx

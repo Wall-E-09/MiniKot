@@ -1,5 +1,3 @@
-// Тест ANTLR Інтерпретатора
-
 print("Enter start number (Int): ");
 var i: Int = readInt();
 
@@ -15,7 +13,6 @@ while (i < limit) {
     print("Current: ");
     println(i);
     
-    // Перевірка if/else
     if (i > limit / 2) {
         println("  -> Passed half way!");
     } else {
@@ -25,8 +22,7 @@ while (i < limit) {
     i = i + step;
 }
 
-// Перевірка степеня
-var p: Double = 2 ^ 3 ^ 2; // Має бути 512 (правоасоціативність)
+var p: Int = 2 ^ 3 ^ 2; 
 print("Power check (2^3^2): ");
 println(p);
 

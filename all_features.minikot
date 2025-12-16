@@ -5,11 +5,14 @@ var userName: String = "";
 var counter: Int = 0;
 var area: Double = 0.0;
 var testCalc: Double = 0.0;
+var f: Double = 0.0;
 
-fun powerCalc(base: Double, exp: Int): Double {
-    var res: Double = base ^ exp;
-    return res;
-}
+//fun sum(base: Double, exp: Int): Double {
+//    var res: Double = base + exp; 
+//    print("Function result: ");
+//    println(res);
+//    return res;
+//}
 
 print("Enter your name: ");
 userName = readString();
@@ -53,5 +56,5 @@ while (isRunning) {
         isRunning = false;
     }
 }
-
+//f = sum (3.0, 2);
 print("Loop finished");

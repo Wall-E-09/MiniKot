@@ -10,46 +10,46 @@
     .entrypoint
     .maxstack 8
     .locals init (
-      [0] int32 counter,
-      [1] float64 PI,
-      [2] float64 radius,
-      [3] float64 area,
-      [4] int32 y,
-      [5] float64 h
+      [0] float64 __temp,
+      [1] int32 counter,
+      [2] float64 PI,
+      [3] float64 radius,
+      [4] float64 area,
+      [5] int32 y,
+      [6] int32 h
     )
 
     ldc.i4 0
-    stloc 0
-    ldc.r8 3.14
     stloc 1
-    ldc.r8 0.0
+    ldc.r8 3.14
     stloc 2
     ldc.r8 0.0
     stloc 3
-    ldc.i4 0
+    ldc.r8 0.0
     stloc 4
     ldc.i4 0
-    conv.r8
     stloc 5
+    ldc.i4 0
+    stloc 6
     ldstr "Enter radius: "
     call void [mscorlib]System.Console::Write(string)
     call string [mscorlib]System.Console::ReadLine()
     call float64 [mscorlib]System.Double::Parse(string)
-    stloc 2
-    ldloc 1
+    stloc 3
     ldloc 2
+    ldloc 3
     ldc.i4 2
     conv.r8
     call float64 [mscorlib]System.Math::Pow(float64, float64)
     mul
-    stloc 3
-    ldloc 3
+    stloc 4
+    ldloc 4
     ldc.r8 100.0
     cgt
     brfalse L_1
     ldstr "Big Area"
     call void [mscorlib]System.Console::Write(string)
-    ldloc 3
+    ldloc 4
     call void [mscorlib]System.Console::Write(float64)
     br L_2
 L_1:
@@ -57,31 +57,19 @@ L_1:
     call void [mscorlib]System.Console::Write(string)
 L_2:
 L_3:
-    ldloc 0
+    ldloc 1
     ldc.i4 3
     clt
     brfalse L_4
-    ldloc 0
+    ldloc 1
     call void [mscorlib]System.Console::Write(int32)
-    ldloc 0
+    ldloc 1
     ldc.i4 1
     add
-    stloc 0
+    stloc 1
     br L_3
 L_4:
-    ldc.i4 2
-    conv.r8
-    ldc.i4 2
-    conv.r8
-    ldc.i4 2
-    conv.r8
-    call float64 [mscorlib]System.Math::Pow(float64, float64)
-    call float64 [mscorlib]System.Math::Pow(float64, float64)
     stloc 5
-    ldloc 4
-    call void [mscorlib]System.Console::Write(int32)
-    ldloc 5
-    call void [mscorlib]System.Console::Write(float64)
     ret
   }
 }

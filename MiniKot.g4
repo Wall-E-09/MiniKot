@@ -1,6 +1,5 @@
 grammar MiniKot;
 
-// --- СИНТАКСИЧНІ ПРАВИЛА (PARSER) ---
 
 program: statement* EOF;
 
@@ -15,7 +14,6 @@ statement
 
 type: 'Int' | 'Double' | 'String' | 'Boolean';
 
-// Вирази
 expression
     : <assoc=right> expression '^' expression             # PowExpr
     | expression op=('*'|'/') expression                  # MulDivExpr
@@ -23,14 +21,11 @@ expression
     | expression op=REL_OP expression                     # RelExpr
     | ID                                                  # IdExpr
     | LITERAL                                             # LitExpr
-    // --- ЗМІНА ТУТ: Ми вбудували readCall сюди ---
     | (READ_INT | READ_DOUBLE | READ_STRING) '(' ')'      # ReadExpr
     | '(' expression ')'                                  # ParenExpr
     ;
 
-// Правило readCall видалено, бо воно тепер всередині expression
 
-// --- ЛЕКСИЧНІ ПРАВИЛА (LEXER) ---
 
 VAR: 'var';
 VAL: 'val';
@@ -46,14 +41,15 @@ READ_STRING: 'readString';
 
 REL_OP: '==' | '!=' | '<=' | '>=' | '<' | '>';
 
-ID: [a-zA-Z_][a-zA-Z0-9_]*;
-
 LITERAL
     : [0-9]+ '.' [0-9]+  // Double
     | [0-9]+             // Int
     | '"' .*? '"'        // String
     | 'true' | 'false'   // Boolean
     ;
+
+
+ID: [a-zA-Z_][a-zA-Z0-9_]*;
 
 WS: [ \t\r\n]+ -> skip;
 COMMENT: '//' ~[\r\n]* -> skip;

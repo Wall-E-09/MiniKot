@@ -9,10 +9,11 @@
    counter int
    area float
    testCalc float
+   f float
 )
 
 .funcs(
-   powerCalc float 2
+   sum float 2
 )
 
 .labels(
@@ -50,6 +51,9 @@
    0.0 float
    = assign_op
    testCalc l-val
+   0.0 float
+   = assign_op
+   f l-val
    0.0 float
    = assign_op
    ""Enter your name: "" string
@@ -187,6 +191,11 @@
    JMP jump
    m2 label
    : colon
+   f l-val
+   3.0 float
+   2 int
+   sum CALL
+   = assign_op
    ""Loop finished"" string
    OUT out_op
 )

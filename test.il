@@ -14,7 +14,7 @@
       [1] int32 a,
       [2] int32 b,
       [3] int32 c,
-      [4] float64 powRes,
+      [4] int32 powRes,
       [5] float64 mix,
       [6] int32 prio,
       [7] string name,
@@ -41,11 +41,12 @@
     conv.r8
     call float64 [mscorlib]System.Math::Pow(float64, float64)
     call float64 [mscorlib]System.Math::Pow(float64, float64)
+    conv.i4
     stloc 4
     ldstr "   2^3^2 (Expect 512): "
     call void [mscorlib]System.Console::Write(string)
     ldloc 4
-    call void [mscorlib]System.Console::WriteLine(float64)
+    call void [mscorlib]System.Console::WriteLine(int32)
     ldc.i4 10
     ldc.r8 5.5
     stloc 0

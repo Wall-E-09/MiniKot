@@ -1,0 +1,37 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   base float
+   exp int
+   res float
+)
+
+.globVarList(
+   MAX_VAL
+   PI
+   isRunning
+   userName
+   counter
+   area
+   testCalc
+   f
+)
+
+.labels(
+)
+
+.code(
+   res l-val
+   base r-val
+   exp r-val
+   i2f conv
+   + math_op
+   = assign_op
+   ""Function result: "" string
+   OUT out_op
+   res r-val
+   OUT out_op
+   res r-val
+   RET RET
+)
