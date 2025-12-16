@@ -1,0 +1,108 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   counter int
+   result float
+   mathCheck int
+   loopVal int
+)
+
+.funcs(
+   adder int 2
+)
+
+.labels(
+   m1 0
+   m2 0
+   m3 0
+   m4 0
+)
+
+.code(
+   counter l-val
+   0 int
+   = assign_op
+   result l-val
+   0.0 float
+   = assign_op
+   mathCheck l-val
+   0 int
+   = assign_op
+   loopVal l-val
+   3 int
+   = assign_op
+   ""--- START TEST ---"" string
+   OUT out_op
+   mathCheck l-val
+   10 int
+   -1 int
+   * math_op
+   5 int
+   - math_op
+   -1 int
+   * math_op
+   = assign_op
+   ""1. Unary Minus (-(-10 - 5)): "" string
+   OUT out_op
+   mathCheck r-val
+   OUT out_op
+   result l-val
+   2.0 float
+   3.0 float
+   2 int
+   i2f conv
+   ^ pow_op
+   + math_op
+   = assign_op
+   ""2. Power Check (2 + 3^2): "" string
+   OUT out_op
+   result r-val
+   OUT out_op
+   mathCheck r-val
+   15 int
+   == rel_op
+   m1 label
+   JF jf
+   ""3. Logic: IF works correct (mathCheck is 15)"" string
+   OUT out_op
+   m2 label
+   JMP jump
+   m1 label
+   : colon
+   ""3. Logic: FAIL"" string
+   OUT out_op
+   m2 label
+   : colon
+   ""4. Loop test (3 to 1):"" string
+   OUT out_op
+   m3 label
+   : colon
+   loopVal r-val
+   0 int
+   > rel_op
+   m4 label
+   JF jf
+   loopVal r-val
+   OUT out_op
+   loopVal l-val
+   loopVal r-val
+   1 int
+   - math_op
+   = assign_op
+   m3 label
+   JMP jump
+   m4 label
+   : colon
+   ""5. Function Call (10 + 20): "" string
+   OUT out_op
+   counter l-val
+   10 int
+   20 int
+   adder CALL
+   = assign_op
+   counter r-val
+   OUT out_op
+   ""--- END TEST ---"" string
+   OUT out_op
+)

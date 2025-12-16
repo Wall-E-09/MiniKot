@@ -8,7 +8,7 @@ var testCalc: Double = 0.0;
 var f: Double = 0.0;
 var e: Int = 0;
 
-e = -(-8 - 7) - (-7 - 5 -(8));
+e = -(-8 - 7) + (-7 - 5 -(8));
 println (e);
 
 fun sum(base: Double, exp: Int): Double {

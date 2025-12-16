@@ -1,60 +1,172 @@
 grammar Minikot;
 
-// --- PARSER RULES ---
+// ==========================================
+// ПАРСЕР (Синтаксичні правила)
+// ==========================================
 
-program: statement* EOF;
+program
+    : statement* EOF
+    ;
 
 statement
     : varDecl
     | constDecl
-    | functionDecl          // <--- ДОДАЙТЕ ЦЕ (Оголошення функції)
+    | functionDecl          // Оголошення функції
     | assignment
     | printStmt
     | ifStmt
     | whileStmt
+    | returnStmt            // Оператор return
     | block
     | expressionStmt
     ;
 
-// Оголошення функції
+block
+    : LBRACE statement* RBRACE
+    ;
+
+// --- Оголошення змінних ---
+varDecl
+    : VAR ID COLON type ASSIGN expression SEMI
+    ;
+
+constDecl
+    : VAL ID COLON type ASSIGN expression SEMI
+    | CONST ID COLON type ASSIGN expression SEMI
+    ;
+
+// --- Функції ---
 functionDecl
-    : FUN ID '(' paramList? ')' ':' type block  // <--- ПРАВИЛО ДЛЯ ФУНКЦІЇ
+    : FUN ID LPAREN paramList? RPAREN COLON type block
     ;
 
 paramList
-    : param (COMMA param)* // <--- Використання коми
+    : param (COMMA param)*
     ;
 
 param
-    : ID ':' type
+    : ID COLON type
     ;
 
-// Вирази (зверніть увагу на порядок!)
+returnStmt
+    : RETURN expression SEMI
+    ;
+
+// --- Присвоєння ---
+assignment
+    : ID ASSIGN expression SEMI
+    ;
+
+// --- Друк ---
+printStmt
+    : PRINT LPAREN expression RPAREN SEMI
+    | PRINTLN LPAREN expression RPAREN SEMI
+    ;
+
+// --- Керуючі конструкції ---
+ifStmt
+    : IF LPAREN expression RPAREN block (ELSE block)?
+    ;
+
+whileStmt
+    : WHILE LPAREN expression RPAREN block
+    ;
+
+expressionStmt
+    : expression SEMI
+    ;
+
+// --- Вирази (Пріоритет зверху вниз) ---
 expression
-    : LPAREN expression RPAREN      # ParenthesizedExpr
-    | MINUS expression              # UnaryMinusExpr    // <--- ПРАВИЛО ДЛЯ УНАРНОГО МІНУСА
-    | expression (MULT | DIV | POW) expression  # MultiplicativeExpr
+    : LPAREN expression RPAREN                  # ParenthesizedExpr
+    | MINUS expression                          # UnaryMinusExpr    // Унарний мінус (пріоритет вище за множення)
+    | ID LPAREN argList? RPAREN                 # FunctionCallExpr  // Виклик функції
+    | readCall                                  # ReadCallExpr
+    | expression POW expression                 # PowerExpr
+    | expression (MULT | DIV) expression        # MultiplicativeExpr
     | expression (PLUS | MINUS) expression      # AdditiveExpr
-    | expression relOp expression   # RelationalExpr
-    | ID LPAREN argList? RPAREN     # FunctionCallExpr  // <--- Виклик функції
-    | ID                            # IdentifierExpr
-    | LITERAL                       # LiteralExpr
-    | functionCall                  # ReadCallExpr
+    | expression relOp expression               # RelationalExpr
+    | ID                                        # IdentifierExpr
+    | LITERAL_INT                               # LiteralIntExpr
+    | LITERAL_DOUBLE                            # LiteralDoubleExpr
+    | LITERAL_STRING                            # LiteralStringExpr
+    | LITERAL_BOOL                              # LiteralBoolExpr
     ;
 
 argList
-    : expression (COMMA expression)* ; // <--- Використання коми у виклику
+    : expression (COMMA expression)*
+    ;
 
-// --- LEXER RULES ---
+readCall
+    : (READ_INT | READ_DOUBLE | READ_STRING) LPAREN RPAREN
+    ;
 
-FUN: 'fun';         // <--- Ключове слово fun
+relOp
+    : GT | LT | GTE | LTE | EQ | NEQ
+    ;
+
+type
+    : TYPE_INT | TYPE_DOUBLE | TYPE_STRING | TYPE_BOOL | TYPE_UNIT
+    ;
+
+// ==========================================
+// ЛЕКСЕР (Токени)
+// ==========================================
+
+// Ключові слова
+VAR: 'var';
+VAL: 'val';
+CONST: 'const';
+FUN: 'fun';
 RETURN: 'return';
-COMMA: ',';         // <--- ОБОВ'ЯЗКОВО ДОДАЙТЕ КОМУ
+IF: 'if';
+ELSE: 'else';
+WHILE: 'while';
+PRINT: 'print';
+PRINTLN: 'println';
+READ_INT: 'readInt';
+READ_DOUBLE: 'readDouble';
+READ_STRING: 'readString';
 
-// Інші токени (PLUS, MINUS, MULT, DIV, ID, INT, WS...)
+// Типи
+TYPE_INT: 'Int';
+TYPE_DOUBLE: 'Double';
+TYPE_STRING: 'String';
+TYPE_BOOL: 'Boolean';
+TYPE_UNIT: 'Unit';
+
+// Літерали
+LITERAL_BOOL: 'true' | 'false';
+LITERAL_INT: [0-9]+;
+LITERAL_DOUBLE: [0-9]+ '.' [0-9]+;
+LITERAL_STRING: '"' .*? '"';
+
+// Оператори та пунктуація
 PLUS: '+';
 MINUS: '-';
 MULT: '*';
 DIV: '/';
 POW: '^';
-// ... ваші інші токени
+ASSIGN: '=';
+
+GT: '>';
+LT: '<';
+GTE: '>=';
+LTE: '<=';
+EQ: '==';
+NEQ: '!=';
+
+LPAREN: '(';
+RPAREN: ')';
+LBRACE: '{';
+RBRACE: '}';
+COLON: ':';
+SEMI: ';';
+COMMA: ',';  // <--- ВАЖЛИВО: Кома додана
+
+ID: [a-zA-Z_][a-zA-Z0-9_]*;
+
+COMMENT: '//' ~[\r\n]* -> skip;
+
+// Пропуск пробілів
+WS: [ \t\r\n]+ -> skip;

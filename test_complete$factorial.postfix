@@ -1,0 +1,46 @@
+.target: Postfix Machine
+.version: 0.2
+
+.vars(
+   globalVar int
+)
+
+.globVarList(
+   globalVar
+   pi
+   x
+   y
+   powerTest
+   mixed
+   factRes
+   counter
+   z
+)
+
+.labels(
+   m1 0
+   m2 0
+)
+
+.code(
+   globalVar r-val
+   1 int
+   <= rel_op
+   m1 label
+   JF jf
+   1 int
+   RET RET
+   m2 label
+   JMP jump
+   m1 label
+   : colon
+   m2 label
+   : colon
+   globalVar r-val
+   globalVar r-val
+   1 int
+   - math_op
+   factorial CALL
+   * math_op
+   RET RET
+)

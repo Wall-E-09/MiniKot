@@ -1,0 +1,45 @@
+var counter: Int = 0;
+var result: Double = 0.0;
+var mathCheck: Int = 0;
+var loopVal: Int = 3;
+
+println("--- START TEST ---");
+
+// 1. Тест унарного мінуса та дужок
+// -(-10 - 5) -> -(-15) -> 15
+mathCheck = -(-10 - 5);
+print("1. Unary Minus (-(-10 - 5)): ");
+println(mathCheck);
+
+// 2. Тест степеня та пріоритету
+// 2.0 + 3.0^2 -> 2.0 + 9.0 -> 11.0
+result = 2.0 + 3.0 ^ 2;
+print("2. Power Check (2 + 3^2): ");
+println(result);
+
+// 3. Тест логіки (IF/ELSE)
+if (mathCheck == 15) {
+    println("3. Logic: IF works correct (mathCheck is 15)");
+} else {
+    println("3. Logic: FAIL");
+}
+
+// 4. Тест циклу (WHILE)
+println("4. Loop test (3 to 1):");
+while (loopVal > 0) {
+    println(loopVal);
+    loopVal = loopVal - 1;
+}
+
+// 5. Оголошення функції
+fun adder(a: Int, b: Int): Int {
+    return a + b;
+}
+
+// 6. Тест виклику функції
+print("5. Function Call (10 + 20): ");
+// Виклик функції та запис результату
+counter = adder(10, 20);
+println(counter);
+
+println("--- END TEST ---");
